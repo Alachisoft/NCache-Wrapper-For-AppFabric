@@ -27,6 +27,7 @@ Add the following <appSettings> tag in your app.config or web.config file in you
 	<appSettings>
     		<add key="mycache" value="mycache"/> <!-- This is the name of the cache, key and value should be same -->
     		<add key="Expirable" value="False"/> <!-- Default flag whether items added in cache should be expirable or permenant -->
+			<add key="TTL" value="6:12:14"/> <!-- Expiration time in Hour, Minutes, Seconds format for TimeSpan -->
   	</appSettings>
 
 That is it! Now build your solution with .NET framework 4 and your applciation will be using NCache.

@@ -7,6 +7,7 @@ using Alachisoft.NCache.Web;
 using Alachisoft.NCache.Runtime.Caching;
 using System.Collections;
 using System.Configuration;
+using System.Runtime.Serialization;
 
 namespace Alachisoft.NCache.Data.Caching.Handler
 {
@@ -139,10 +140,11 @@ namespace Alachisoft.NCache.Data.Caching.Handler
             }
         }
 
-        internal object Get(string key, ref DataCacheItemVersion version, string region)
+        internal object Get(string key, out DataCacheItemVersion version, string region)
         {
             string _key;
             object obj;
+            version = (DataCacheItemVersion)FormatterServices.GetUninitializedObject(typeof(DataCacheItemVersion));
             if (string.IsNullOrWhiteSpace(region))
             {
                 _key = _formatter.MarshalKey(key, null);
@@ -156,7 +158,10 @@ namespace Alachisoft.NCache.Data.Caching.Handler
                 if (version != null)
                 {
                     CacheItemVersion _cItemVersion = _formatter.ConvertToNCacheVersion(version);
-                     obj = _NCache.Get(_key, ref _cItemVersion);
+                    obj = _NCache.Get(_key, ref _cItemVersion);
+                    if(_cItemVersion != null)
+                        if (_cItemVersion.Version != null)
+                            version._itemVersion = _cItemVersion;
                 }
                 else
                 {
@@ -255,30 +260,28 @@ namespace Alachisoft.NCache.Data.Caching.Handler
         internal object GetLock(string key, TimeSpan timeOut, out DataCacheLockHandle appLockHandle, string region, bool forceLock)
         {
             appLockHandle = new DataCacheLockHandle();
-            CacheItem _item;
+            object obj;
             LockHandle lockHandle = _formatter.ConvertToNCacheLockHandle(appLockHandle);
             try
             {
-                string _key;
-                
                 if (string.IsNullOrWhiteSpace(region))
                 {
-                    _key = _formatter.MarshalKey(key, null);
+                    key = _formatter.MarshalKey(key, null);
                 }
                 else
                 {
-                    _key = _formatter.MarshalKey(key, region);
+                    key = _formatter.MarshalKey(key, region);
                 }
-                object cacheGetAndLockResult = _NCache.Get(_key, timeOut, ref lockHandle, true);
+                object cacheGetAndLockResult = _NCache.Get(key, timeOut, ref lockHandle, true);
                 if (cacheGetAndLockResult == null)
                 {
-                    _item = (CacheItem)_NCache.Get(_key, timeOut, ref lockHandle, true);
+                    obj = _NCache.Get(key, timeOut, ref lockHandle, true);
                 }
                 else
                 {
-                    _item= (CacheItem) cacheGetAndLockResult;
+                    obj = cacheGetAndLockResult;
                 }
-                return _item.Value;
+                return obj;
             }
             catch (Exception ex)
             {
@@ -314,19 +317,18 @@ namespace Alachisoft.NCache.Data.Caching.Handler
         
         internal object GetIfNewer(string key, ref DataCacheItemVersion version, string region)
         {
-            CacheItemVersion nVersion = _formatter.ConvertToNCacheVersion(version);
+            
             string _key = _formatter.MarshalKey(key,region);
-         #if PROFESSIONAL                    
-         #else
-            CacheItem _item=(CacheItem) _NCache.GetIfNewer(key, null, null, ref nVersion);
-            return _item.Value;
-        #endif
+            CacheItemVersion nVersion = _formatter.ConvertToNCacheVersion(version);
+            object obj = _NCache.GetIfNewer(_key, null, null, ref nVersion);
+            return obj;
+       
         }
        
         internal string GetSystemRegionName(string key)
         {
             string _key = _formatter.MarshalKey(key);
-            CacheItem _item= (CacheItem)_NCache.Get(_key);
+            CacheItem _item= _NCache.GetCacheItem(_key);
             if (_item != null)
             {
                 return _item.Group;

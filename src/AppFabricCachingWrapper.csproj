@@ -79,7 +79,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BaseOperationNotification.cs" />
+    <Compile Include="DataCacheClientLogManager.cs" />
     <Compile Include="DataCacheErrorCode.cs" />
+    <Compile Include="DataCacheTraceSink.cs" />
     <Compile Include="NCache Handler\CallbackHandler.cs" />
     <Compile Include="Util\CallbackType.cs" />
     <Compile Include="DataCache.cs" />

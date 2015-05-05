@@ -199,7 +199,7 @@ namespace Alachisoft.NCache.Data.Caching
         public object Get(string key)
         {
             DataCacheItemVersion version = null;
-            return Get(key, ref version,null);
+            return Get(key, out version,null);
         }
 
         /// <summary>
@@ -211,7 +211,7 @@ namespace Alachisoft.NCache.Data.Caching
         public object Get(string key, string region)
         {
             DataCacheItemVersion version = null;
-            return Get(key, ref version, region);
+            return Get(key, out version, region);
         }
 
         /// <summary>
@@ -222,9 +222,9 @@ namespace Alachisoft.NCache.Data.Caching
         /// <param name="key"></param>
         /// <param name="version"></param>
         /// <returns></returns>
-        public object Get(string key, ref DataCacheItemVersion Version)
+        public object Get(string key, out DataCacheItemVersion Version)
         {
-            return Get(key, ref Version, null);
+            return Get(key, out Version, null);
         }
 
         /// <summary>
@@ -236,13 +236,13 @@ namespace Alachisoft.NCache.Data.Caching
         /// <param name="key"></param>
         /// <param name="version"></param>
         /// <returns></returns>
-        public object Get(string key, ref DataCacheItemVersion version, string region)
+        public object Get(string key, out DataCacheItemVersion version, string region)
         {
             if (string.IsNullOrEmpty(key))
             {
                 throw new DataCacheException("Inavlid key");
             }
-            return _cache.Get(key, ref version, region);
+            return _cache.Get(key, out version, region);
         } 
         #endregion
 
@@ -254,13 +254,13 @@ namespace Alachisoft.NCache.Data.Caching
         /// <param name="region"></param>
         /// <param name="tag"></param>
         /// <returns></returns>
-        public IEnumerable<KeyValuePair<string, object>> GetObjectsByTag(string region, DataCacheTag tag)
+        public IEnumerable<KeyValuePair<string, object>> GetObjectsByTag(DataCacheTag tag, string region)
         {
             if (string.IsNullOrEmpty(region))
             {
                 throw new DataCacheException("Inavlid Region");
             }
-            return _cache.GetObjectsByTag(region, tag) ;
+            return _cache.GetObjectsByTag(region, tag);
          }
 
         /// <summary>
@@ -846,6 +846,32 @@ namespace Alachisoft.NCache.Data.Caching
             catch (Exception ex)
             {
                 throw new DataCacheException("Put opertaion failed."+ex.Message, ex);
+            }
+        }
+
+        /// <summary>
+        /// Adds a new object to the cache or replaces one if it already occurs in the cache. 
+        /// This overload allows you to save your object to a region and specify an object expiration that overrides the default settings for the cache. 
+        /// This method also supports optimistic concurrency by accepting version information as a parameter. 
+        /// </summary>
+        /// <param name="region"></param>
+        /// <param name="key"></param>
+        /// <param name="value"></param>
+        /// <param name="oldVersion"></param>
+        /// <returns></returns>
+        public DataCacheItemVersion Put(string key, object value, DataCacheItemVersion oldVersion, string region)
+        {
+            try
+            {
+                return Put(key, value, oldVersion, TimeSpan.Zero, null, region);
+            }
+            catch (ArgumentNullException ex)
+            {
+                throw new DataCacheException("Argument cannot be null", ex);
+            }
+            catch (Exception ex)
+            {
+                throw new DataCacheException("Put opertaion failed." + ex.Message, ex);
             }
         }
 

@@ -618,7 +618,7 @@ namespace CacheAPISample
             myCacheFactory = new DataCacheFactory(configuration);
 
             //Get reference to named cache called "default"
-            myDefaultCache = myCacheFactory.GetCache("default");
+            myDefaultCache = myCacheFactory.GetCache("mycache");
         }
     }
 }

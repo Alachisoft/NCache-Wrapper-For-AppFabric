@@ -160,7 +160,7 @@ namespace Alachisoft.NCache.Data.Caching
            for (int i = 0; i < tags.Length; i++)
            {
                string[] _splitList = tags[i].ToString().Split(_delimeter, StringSplitOptions.RemoveEmptyEntries);
-               tags[i] = new Tag(_splitList[1]);
+               tags[i] = new Tag(_splitList[0]);
            }
            DataCacheTag[] _dataCachaTag = ConvertToDataCacheTag(tags);
            return _dataCachaTag;
@@ -294,13 +294,16 @@ namespace Alachisoft.NCache.Data.Caching
                _item.Tags = MarshalTags(null, region);
                _item.Group = region;
            }
-           else
+           else if (tags != null && String.IsNullOrWhiteSpace(region))
            {
                _item.Tags = MarshalTags(tags, null);
                _item.Group = returnDefaultRegionTag();
            }
-
-           
+           else
+           {
+               _item.Tags = MarshalTags(tags, region);
+               _item.Group = returnDefaultRegionTag();
+           }
            return _item;
        }
 
