@@ -10,7 +10,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Alachisoft")]
 [assembly: AssemblyProduct("NCache's Velocity Wrapper")]
-[assembly: AssemblyCopyright("Copyright © Alachisoft 2008")]
+[assembly: AssemblyCopyright("Copyright © Alachisoft 2018")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

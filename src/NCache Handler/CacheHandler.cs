@@ -313,14 +313,18 @@ namespace Alachisoft.NCache.Data.Caching.Handler
             {
                 throw exp;
             }
-        }
-        
+        }        
         internal object GetIfNewer(string key, ref DataCacheItemVersion version, string region)
         {
             
             string _key = _formatter.MarshalKey(key,region);
             CacheItemVersion nVersion = _formatter.ConvertToNCacheVersion(version);
             object obj = _NCache.GetIfNewer(_key, null, null, ref nVersion);
+
+            if (nVersion != null)
+            {
+                version._itemVersion = nVersion;
+            }
             return obj;
        
         }
