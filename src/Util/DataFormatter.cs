@@ -252,23 +252,28 @@ namespace Alachisoft.NCache.Data.Caching
        {
            CacheItem _item = new CacheItem(value);
 
-           if (tags == null && String.IsNullOrWhiteSpace(region))
-           {
-               _item.Tags = MarshalTags(null, null);
-               _item.Group = returnDefaultRegionTag();
-           }
-           else if (tags == null && !String.IsNullOrWhiteSpace(region))
-           {
-               _item.Tags = MarshalTags(null, region);
-               _item.Group = region;
-           }
-           else
-           {
-               _item.Tags = MarshalTags(tags, null);
-               _item.Group = returnDefaultRegionTag();
-           }
+            if (tags == null && String.IsNullOrWhiteSpace(region))
+            {
+                _item.Tags = MarshalTags(null, null);
+                _item.Group = returnDefaultRegionTag();
+            }
+            else if (tags == null && !String.IsNullOrWhiteSpace(region))
+            {
+                _item.Tags = MarshalTags(null, region);
+                _item.Group = region;
+            }
+            else if (tags != null && String.IsNullOrWhiteSpace(region))
+            {
+                _item.Tags = MarshalTags(tags, null);
+                _item.Group = returnDefaultRegionTag();
+            }
+            else
+            {
+                _item.Tags = MarshalTags(tags, region);
+                _item.Group = returnDefaultRegionTag();
+            }
 
-           if (timeOut == TimeSpan.Zero)
+            if (timeOut == TimeSpan.Zero)
            {
                _item.AbsoluteExpiration = System.DateTime.Now.AddMinutes(10.0);
            }

@@ -42,11 +42,11 @@ namespace Alachisoft.NCache.Data.Caching.Handler
         internal DataCacheItemVersion Add(string key, object value, IEnumerable<DataCacheTag> tags, TimeSpan timeOut, string region)
         {
             string expirationCheck = ConfigurationManager.AppSettings["Expirable"];
-            
+            expirationCheck=expirationCheck.ToLower();
             try
             {
                 CacheItem _item=null;
-                if (expirationCheck.Equals("True"))
+                if (expirationCheck.Equals("true"))
                 {
                     if (timeOut == TimeSpan.Zero)
                     {
@@ -66,7 +66,7 @@ namespace Alachisoft.NCache.Data.Caching.Handler
                         _item = _formatter.CreateCacheItem(value, tags, region,timeOut);
                     }
                 }
-                else if (expirationCheck.Equals("False"))
+                else if (expirationCheck.Equals("false"))
                 {
                     _item = _formatter.CreateCacheItem(value, tags, region);
                 }

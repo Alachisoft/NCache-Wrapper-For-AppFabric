@@ -61,13 +61,55 @@
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Alachisoft.NCache.Cache, Version=4.9.0.0, Culture=neutral, PublicKeyToken=cff5926ed6a53769, processorArchitecture=MSIL">
+      <HintPath>packages\Alachisoft.NCache.SDK.4.9.0\lib\net40\Alachisoft.NCache.Cache.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Alachisoft.NCache.Common, Version=4.9.0.0, Culture=neutral, PublicKeyToken=cff5926ed6a53769, processorArchitecture=MSIL">
+      <HintPath>packages\Alachisoft.NCache.SDK.4.9.0\lib\net40\Alachisoft.NCache.Common.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Alachisoft.NCache.Management, Version=4.9.0.0, Culture=neutral, PublicKeyToken=cff5926ed6a53769, processorArchitecture=MSIL">
+      <HintPath>packages\Alachisoft.NCache.SDK.4.9.0\lib\net40\Alachisoft.NCache.Management.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Alachisoft.NCache.NetJNIBridge, Version=4.9.0.0, Culture=neutral, PublicKeyToken=cff5926ed6a53769, processorArchitecture=MSIL">
+      <HintPath>packages\Alachisoft.NCache.SDK.4.9.0\lib\net40\Alachisoft.NCache.NetJNIBridge.dll</HintPath>
+    </Reference>
+    <Reference Include="Alachisoft.NCache.Parser, Version=4.9.0.0, Culture=neutral, PublicKeyToken=cff5926ed6a53769, processorArchitecture=MSIL">
+      <HintPath>packages\Alachisoft.NCache.SDK.4.9.0\lib\net40\Alachisoft.NCache.Parser.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="Alachisoft.NCache.Runtime, Version=4.9.0.0, Culture=neutral, PublicKeyToken=cff5926ed6a53769, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\Src\NCRuntime\bin\2.0\release.enterprise\Alachisoft.NCache.Runtime.dll</HintPath>
+      <HintPath>packages\Alachisoft.NCache.SDK.4.9.0\lib\net40\Alachisoft.NCache.Runtime.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Alachisoft.NCache.Security, Version=4.9.0.0, Culture=neutral, PublicKeyToken=cff5926ed6a53769, processorArchitecture=MSIL">
+      <HintPath>packages\Alachisoft.NCache.SDK.4.9.0\lib\net40\Alachisoft.NCache.Security.dll</HintPath>
+    </Reference>
+    <Reference Include="Alachisoft.NCache.Serialization, Version=4.9.0.0, Culture=neutral, PublicKeyToken=cff5926ed6a53769, processorArchitecture=MSIL">
+      <HintPath>packages\Alachisoft.NCache.SDK.4.9.0\lib\net40\Alachisoft.NCache.Serialization.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Alachisoft.NCache.SocketServer, Version=4.9.0.0, Culture=neutral, PublicKeyToken=cff5926ed6a53769, processorArchitecture=MSIL">
+      <HintPath>packages\Alachisoft.NCache.SDK.4.9.0\lib\net40\Alachisoft.NCache.SocketServer.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Alachisoft.NCache.Storage, Version=4.9.0.0, Culture=neutral, PublicKeyToken=cff5926ed6a53769, processorArchitecture=MSIL">
+      <HintPath>packages\Alachisoft.NCache.SDK.4.9.0\lib\net40\Alachisoft.NCache.Storage.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="Alachisoft.NCache.Web, Version=4.9.0.0, Culture=neutral, PublicKeyToken=cff5926ed6a53769, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\Src\NCWebCache\bin\2.0\release.enterprise\Alachisoft.NCache.Web.dll</HintPath>
+      <HintPath>packages\Alachisoft.NCache.SDK.4.9.0\lib\net40\Alachisoft.NCache.Web.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="log4net, Version=1.2.10.0, Culture=neutral, PublicKeyToken=1b44e1d426115821, processorArchitecture=MSIL">
+      <HintPath>packages\Alachisoft.NCache.SDK.4.9.0\lib\net40\log4net.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="protobuf-net, Version=1.0.0.282, Culture=neutral, PublicKeyToken=257b51d87d2e4d67, processorArchitecture=MSIL">
+      <HintPath>packages\Alachisoft.NCache.SDK.4.9.0\lib\net40\protobuf-net.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.configuration" />
@@ -75,6 +117,10 @@
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
     </Reference>
     <Reference Include="System.Data" />
+    <Reference Include="System.Management.Automation, Version=1.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>packages\Alachisoft.NCache.SDK.4.9.0\lib\net40\System.Management.Automation.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
@@ -126,6 +172,9 @@
       <ProductName>Windows Installer 3.1</ProductName>
       <Install>true</Install>
     </BootstrapperPackage>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

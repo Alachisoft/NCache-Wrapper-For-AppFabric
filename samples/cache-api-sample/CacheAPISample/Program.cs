@@ -18,12 +18,20 @@ namespace CacheAPISample
 
         static void Main(string[] args)
         {
-            Program program = new Program();
-            program.PrepareClient();
-            program.RunSampleTest();
+            try
+            {
+                Program program = new Program();
+                program.PrepareClient();
+                program.RunSampleTest();
 
-            Console.WriteLine("Press any key to continue ...");
-            Console.ReadLine();
+                Console.WriteLine("Press any key to continue ...");
+                Console.ReadLine();
+
+            }
+            catch(Exception exp)
+            {
+                Console.WriteLine(exp.ToString());
+            }
         }
 
         public void RunSampleTest()
@@ -434,7 +442,7 @@ namespace CacheAPISample
             {
                 Console.WriteLine("PASS----->Put-Object-Expected behaviour since Object is newer");
                 Console.Write("PASS----->Distributed Cache Generated Exception:");
-                Console.WriteLine(ex.ToString());
+                Console.WriteLine(ex.InnerException.Message);
             }
 
             // Testing simple Add/Get on a Region with Tags
@@ -618,7 +626,7 @@ namespace CacheAPISample
             myCacheFactory = new DataCacheFactory(configuration);
 
             //Get reference to named cache called "default"
-            myDefaultCache = myCacheFactory.GetCache("mycache");
+            myDefaultCache = myCacheFactory.GetCache("CacheId");
         }
     }
 }
