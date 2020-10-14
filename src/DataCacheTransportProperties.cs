@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 namespace Alachisoft.NCache.Data.Caching
 {
@@ -21,7 +18,20 @@ namespace Alachisoft.NCache.Data.Caching
 
         public object Clone()
         {
-            return this;
+            if (ReferenceEquals(this, null))
+            {
+                return null;
+            }
+
+            return new DataCacheTransportProperties
+            {
+                ChannelInitializationTimeout = this.ChannelInitializationTimeout,
+                ConnectionBufferSize = this.ConnectionBufferSize,
+                MaxBufferPoolSize = this.MaxBufferPoolSize,
+                MaxBufferSize = this.MaxBufferSize,
+                MaxOutputDelay = this.MaxOutputDelay,
+                ReceiveTimeout = this.ReceiveTimeout
+            };
         }
     }
 }
