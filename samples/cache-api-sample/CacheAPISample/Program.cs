@@ -602,6 +602,7 @@ namespace CacheAPISample
             // Configure Cache Client 
             //-------------------------
 
+            myCacheFactory = new DataCacheFactory();
             //Get reference to named cache
             myDefaultCache = myCacheFactory.GetCache("CacheId");
         }
