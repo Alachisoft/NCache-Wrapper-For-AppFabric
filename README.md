@@ -90,7 +90,7 @@ Following these steps, you should now be able to run your AppFabric application 
 
 ### Running the Sample Application
 
-In order to demonstrate the use of the NCache AppFabric Wrapper library, you can use the accompanying [sample](./samples/cache-api-sample/CacheAPISample/).
+In order to demonstrate the use of the NCache AppFabric Wrapper library, you can use the accompanying [sample](./samples/cache-api-sample/).
 The sample uses an in-proc local cache configured using the project      [**config.ncconf**](./samples/cache-api-sample/CacheAPISample/config.ncconf) file.
 
 Before running the application, replace the cache server name given by the cache/server tag with you the IP address of your machine in the project [**client.ncconf**](./samples/cache-api-sample/CacheAPISample/client.ncconf) file:
