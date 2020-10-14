@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-namespace Alachisoft.NCache.Data.Caching
+﻿namespace Alachisoft.NCache.Data.Caching
 {
     public class DataCacheServerEndpoint
     {
@@ -19,5 +14,45 @@ namespace Alachisoft.NCache.Data.Caching
 
         public int CachePort { get; set; }
         public string HostName { get; set; }
+
+        public override bool Equals(object obj)
+        {
+            if (this is null)
+            {
+                if (obj is null)
+                {
+                    return true;
+                }
+
+                return false;
+            }
+
+            if (!(this is null) && (obj is null))
+            {
+                return false;
+            }
+
+            var other = obj as DataCacheServerEndpoint;
+
+            if (other is null)
+            {
+                return false;
+            }
+
+            return CachePort == other.CachePort && HostName == other.HostName;
+        }
+
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                if (this is null)
+                {
+                    return base.GetHashCode();
+                }
+
+                return (CachePort + HostName).GetHashCode();
+            }
+        }
     }
 }
