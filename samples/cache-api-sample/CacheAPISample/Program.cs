@@ -602,30 +602,7 @@ namespace CacheAPISample
             // Configure Cache Client 
             //-------------------------
 
-            //Define Array for 1 Cache Host
-            List<DataCacheServerEndpoint> servers = new List<DataCacheServerEndpoint>(1);
-
-            //Specify Cache Host Details 
-            //  Parameter 1 = host name
-            //  Parameter 2 = cache port number
-            servers.Add(new DataCacheServerEndpoint("localhost", 22233));
-
-            //Create cache configuration
-            DataCacheFactoryConfiguration configuration = new DataCacheFactoryConfiguration();
-
-            //Set the cache host(s)
-            configuration.Servers = servers;
-
-            //Set default properties for local cache (local cache disabled)
-            configuration.LocalCacheProperties = new DataCacheLocalCacheProperties();
-
-            //Disable exception messages since this sample works on a cache aside
-            DataCacheClientLogManager.ChangeLogLevel(System.Diagnostics.TraceLevel.Off);
-
-            //Pass configuration settings to cacheFactory constructor
-            myCacheFactory = new DataCacheFactory(configuration);
-
-            //Get reference to named cache called "default"
+            //Get reference to named cache
             myDefaultCache = myCacheFactory.GetCache("CacheId");
         }
     }
