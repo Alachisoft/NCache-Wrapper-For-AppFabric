@@ -1,8 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 using System.Configuration;
-using System.Collections;
+using System.Linq;
 
 namespace Alachisoft.NCache.Data.Caching
 {
@@ -27,11 +26,14 @@ namespace Alachisoft.NCache.Data.Caching
         public DataCacheFactory(DataCacheFactoryConfiguration configuration)
         {
             _initParams = new Alachisoft.NCache.Web.Caching.CacheInitParams();
+
+            var cacheServerInfoList = new List<Alachisoft.NCache.Web.Caching.CacheServerInfo>(configuration.Servers.Count());
             foreach (DataCacheServerEndpoint _temp in configuration.Servers)
             {
-                _initParams.Server = _temp.HostName;
-                _initParams.Port = _temp.CachePort;
+                cacheServerInfoList.Add(new Alachisoft.NCache.Web.Caching.CacheServerInfo(_temp.HostName, _temp.CachePort));
             }
+
+            _initParams.ServerList = cacheServerInfoList.ToArray();
         }
         #endregion
         
