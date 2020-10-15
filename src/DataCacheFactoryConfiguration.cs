@@ -23,7 +23,39 @@ namespace Alachisoft.NCache.Data.Caching
 
         public object Clone()
         {
-            return this;
+            if (ReferenceEquals(this, null))
+            {
+                return null;
+            }
+
+            return new DataCacheFactoryConfiguration
+            {
+                ChannelOpenTimeout = this.ChannelOpenTimeout,
+                LocalCacheProperties = this.LocalCacheProperties == null ? null : new DataCacheLocalCacheProperties(this.LocalCacheProperties),
+                MaxConnectionsToServer = this.MaxConnectionsToServer,
+                NotificationProperties = this.NotificationProperties == null ? null : new DataCacheNotificationProperties(this.NotificationProperties),
+                RequestTimeout = this.RequestTimeout,
+                SecurityProperties = this.SecurityProperties == null ? null : new DataCacheSecurity(this.SecurityProperties),
+                TransportProperties = this.TransportProperties.Clone() as DataCacheTransportProperties,
+                Servers = InitializeServers(this.Servers)
+            };
+        }
+
+        private static IEnumerable<DataCacheServerEndpoint> InitializeServers(IEnumerable<DataCacheServerEndpoint> servers)
+        {
+            if (servers == null)
+            {
+                return null;
+            }
+
+            var serverCopies = new List<DataCacheServerEndpoint>(servers.Count());
+
+            foreach (var server in servers)
+            {
+                serverCopies.Add(new DataCacheServerEndpoint(server.HostName, server.CachePort));
+            }
+
+            return serverCopies;
         }
     }
 }

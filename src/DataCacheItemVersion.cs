@@ -68,7 +68,7 @@ namespace Alachisoft.NCache.Data.Caching
         }
         public static bool operator ==(DataCacheItemVersion left, DataCacheItemVersion right)
         {
-            if (object.ReferenceEquals(right, null) && object.ReferenceEquals(right, null))
+            if (object.ReferenceEquals(left, null) && object.ReferenceEquals(right, null))
             {
                 return true;
             }
@@ -95,7 +95,7 @@ namespace Alachisoft.NCache.Data.Caching
         }
         public static bool operator >(DataCacheItemVersion left, DataCacheItemVersion right)
         {
-            if (object.ReferenceEquals(right, null) && object.ReferenceEquals(right, null))
+            if (object.ReferenceEquals(left, null) && object.ReferenceEquals(right, null))
             {
                 return false;
             }
@@ -142,11 +142,19 @@ namespace Alachisoft.NCache.Data.Caching
         }
         public override bool Equals(object obj)
         {
-            return base.Equals(obj);
+            DataCacheItemVersion other = obj as DataCacheItemVersion;
+            return this == other;
         }
         public override int GetHashCode()
         {
-            return base.GetHashCode();
+            if (this == null)
+            {
+                return base.GetHashCode();
+            }
+            else
+            {
+                return ("DataCacheItemVersion" + _itemVersion.Version).GetHashCode();
+            }
         }
     }
 }
