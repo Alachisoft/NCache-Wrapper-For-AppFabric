@@ -5,11 +5,11 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("VelocityWrapperAPI")]
-[assembly: AssemblyDescription("NCache based wrapper for MS Velocity")]
+[assembly: AssemblyTitle("Alachisoft.NCache.Data.Caching")]
+[assembly: AssemblyDescription("NCache based wrapper for MS AppFabric")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Alachisoft")]
-[assembly: AssemblyProduct("NCache's Velocity Wrapper")]
+[assembly: AssemblyProduct("NCache's AppFabric Wrapper")]
 [assembly: AssemblyCopyright("Copyright © Alachisoft 2020")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
