@@ -63,7 +63,8 @@
       <HintPath>..\packages\Alachisoft.NCache.SDK.5.0.3\lib\net40\Alachisoft.NCache.Common.dll</HintPath>
     </Reference>
     <Reference Include="Alachisoft.NCache.Data.Caching, Version=5.0.3.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\AppFabric.Wrapper.NCache.5.0.3\lib\net40\Alachisoft.NCache.Data.Caching.dll</HintPath>
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\binaries\Alachisoft.NCache.Data.Caching.dll</HintPath>
     </Reference>
     <Reference Include="Alachisoft.NCache.Management, Version=5.0.0.0, Culture=neutral, PublicKeyToken=cff5926ed6a53769, processorArchitecture=MSIL">
       <HintPath>..\packages\Alachisoft.NCache.SDK.5.0.3\lib\net40\Alachisoft.NCache.Management.dll</HintPath>
@@ -105,6 +106,7 @@
       <HintPath>..\packages\Alachisoft.NCache.SDK.5.0.3\lib\net40\protobuf-net.dll</HintPath>
     </Reference>
     <Reference Include="System" />
+    <Reference Include="System.Configuration" />
     <Reference Include="System.Core">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
     </Reference>
