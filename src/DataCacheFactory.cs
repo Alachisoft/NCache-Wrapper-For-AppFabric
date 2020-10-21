@@ -5,13 +5,13 @@ using System.Linq;
 
 namespace Alachisoft.NCache.Data.Caching
 {
-    
+
 
     /// <summary>
     /// Provides methods to return Cache objects that are mapped to a named cache. 
     /// This class also enables programmatic configuration of the cache client. 
     /// </summary>
-    public class DataCacheFactory:IDisposable
+    public class DataCacheFactory : IDisposable
     {
         #region[    Constructors    ]
         /// <summary>
@@ -36,7 +36,7 @@ namespace Alachisoft.NCache.Data.Caching
             _initParams.ServerList = cacheServerInfoList.ToArray();
         }
         #endregion
-        
+
         /// <summary>
         /// Returns specified Cache Client
         /// </summary>
@@ -45,25 +45,25 @@ namespace Alachisoft.NCache.Data.Caching
         public DataCache GetCache(string cacheName)
         {
             Alachisoft.NCache.Web.Caching.Cache theCache = null;
-            string cache = ConfigurationManager.AppSettings[cacheName];
-            if (cache!=null)
+            if (string.IsNullOrWhiteSpace(cacheName))
             {
-                try
+                throw new ArgumentNullException("Cache name is null or blank", nameof(cacheName));
+            }
+            try
+            {
+                if (_initParams != null)
                 {
-                    if (_initParams != null)
-                    {
-                        theCache = NCache.Web.Caching.NCache.InitializeCache(cache, _initParams);
-                    }
-                    else
-                    {
-                        theCache = NCache.Web.Caching.NCache.InitializeCache(cache);
-                    }
-                    _dataCacheList.Add(theCache);
+                    theCache = NCache.Web.Caching.NCache.InitializeCache(cacheName, _initParams);
                 }
-                catch (Exception ex)
+                else
                 {
-                    throw ex;
+                    theCache = NCache.Web.Caching.NCache.InitializeCache(cacheName);
                 }
+                _dataCacheList.Add(theCache);
+            }
+            catch (Exception ex)
+            {
+                throw ex;
             }
             return new DataCache(theCache, cacheName);
         }

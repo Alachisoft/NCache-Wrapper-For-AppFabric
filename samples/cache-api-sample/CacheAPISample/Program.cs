@@ -5,6 +5,7 @@ namespace CacheAPISample
 {
     using System;
     using System.Collections.Generic;
+    using System.Configuration;
     using System.Linq;
 	//Only need to change the namespace from  Microsoft.ApplicationServer.Caching to Alachisoft.NCache.Data.Caching
     //using Microsoft.ApplicationServer.Caching; 
@@ -603,8 +604,9 @@ namespace CacheAPISample
             //-------------------------
 
             myCacheFactory = new DataCacheFactory();
+            var cacheName = ConfigurationManager.AppSettings["CacheId"];
             //Get reference to named cache
-            myDefaultCache = myCacheFactory.GetCache("CacheId");
+            myDefaultCache = myCacheFactory.GetCache(cacheName);
         }
     }
 }
