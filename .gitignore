@@ -131,3 +131,5 @@ $RECYCLE.BIN/
 .DS_Store
 
 _NCrunch*
+/src/nuget.exe
+/src/AppFabric.Wrapper.NCache.5.0.3.1.nupkg

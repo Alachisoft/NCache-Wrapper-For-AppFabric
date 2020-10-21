@@ -135,8 +135,6 @@ namespace Alachisoft.NCache.Data.Caching
                         Callback(CacheId, keyRegion[1], keyRegion[0], null, DataCacheOperations.ReplaceItem, NotificationDescriptor);
                     }
                 }
-                else
-                    ;//do nothing in case of different key
             }
         }
 
@@ -159,7 +157,6 @@ namespace Alachisoft.NCache.Data.Caching
                         Callback(CacheId, keyRegion[1], keyRegion[0], null, DataCacheOperations.RemoveItem, NotificationDescriptor);
                     }
                 }
-                else ;
             }
         }
 

@@ -458,7 +458,7 @@ namespace Alachisoft.NCache.Data.Caching.Handler
 
                 return true;
             }
-            catch (Exception exp)
+            catch (Exception)
             {
                 return false;
             }

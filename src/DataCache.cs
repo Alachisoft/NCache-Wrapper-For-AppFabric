@@ -416,7 +416,7 @@ namespace Alachisoft.NCache.Data.Caching
                 else
                     return null;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return null;
             }
@@ -1591,7 +1591,6 @@ namespace Alachisoft.NCache.Data.Caching
             {
                 return false;
             }
-            return true;
         }
 
         /// <summary>
@@ -1617,7 +1616,6 @@ namespace Alachisoft.NCache.Data.Caching
             {
                 return false;
             }
-            return true;
         }
 
         /// <summary>
@@ -1642,7 +1640,6 @@ namespace Alachisoft.NCache.Data.Caching
             {
                 return false;
             }
-            return true;
         }
 
         /// <summary>
