@@ -133,3 +133,4 @@ $RECYCLE.BIN/
 _NCrunch*
 /src/nuget.exe
 /src/AppFabric.Wrapper.NCache.5.0.3.1.nupkg
+/src/AppFabric.Wrapper.NCache.5.0.3.2.nupkg

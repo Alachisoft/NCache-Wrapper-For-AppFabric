@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>AppFabric.Wrapper.NCache</id>
-    <version>5.0.3.1</version>
+    <version>5.0.3.2</version>
     <title>AppFabric Wrapper Using NCache</title>
     <authors>Alachisoft</authors>
     <owners>Alachisoft</owners>

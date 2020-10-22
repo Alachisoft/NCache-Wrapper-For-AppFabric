@@ -41,7 +41,9 @@ namespace Alachisoft.NCache.Data.Caching.Handler
 
         internal DataCacheItemVersion Add(string key, object value, IEnumerable<DataCacheTag> tags, TimeSpan timeOut, string region)
         {
-            string expirationCheck = ConfigurationManager.AppSettings["Expirable"];
+            string expirationCheck = ConfigurationManager.AppSettings["Expirable"] ?? "false";
+            
+
             expirationCheck=expirationCheck.ToLower();
             try
             {
@@ -50,7 +52,7 @@ namespace Alachisoft.NCache.Data.Caching.Handler
                 {
                     if (timeOut == TimeSpan.Zero)
                     {
-                        string TTL = ConfigurationManager.AppSettings["TTL"];
+                        string TTL = ConfigurationManager.AppSettings["TTL"] ?? "00:10:00";
                         TimeSpan tempTimeOut = TimeSpan.Parse(TTL);
                         if (!String.IsNullOrWhiteSpace(TTL) && tempTimeOut != TimeSpan.Zero)
                         {
