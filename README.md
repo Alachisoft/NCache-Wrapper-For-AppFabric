@@ -16,20 +16,12 @@ follow the minimalistic instructions in this guide.
 ### Prerequisites To Using the NCache AppFabric Wrapper
 
 - **STEP 1:**
-
-   Build the [NCache AppFabric Wrapper](./src/) library with the latest Alachisoft.NCache.SDK NuGet package in **release** mode.
-
-- **STEP 2:**
-
-  Get the resulting **Alachisoft.NCache.Data.Caching** dll file from the **release** folder and reference it in your AppFabric application.
-
-- **STEP 3:**
-
-  In your AppFabric application, download the **Alachisoft.NCache.SDK** NuGet package with the **same version used to build the AppFabric wrapper library in step 2**. This will include the NCache Enterprise SDK library together with all the dependent NuGet packages needed by the AppFabric wrapper binaries. Also included will be the [**client.ncconf**](https://www.alachisoft.com/resources/docs/ncache/admin-guide/client-config.html) and [**config.ncconf**](https://www.alachisoft.com/resources/docs/ncache/admin-guide/config-ncconf.html) files. 
+   
+   Install [AppFabric.NCache.Wrapper](https://www.nuget.org/packages/AppFabric.Wrapper.NCache/) NuGet in your application. After installing the Nuget package in your AppFabric application, [**client.ncconf**](https://www.alachisoft.com/resources/docs/ncache/admin-guide/client-config.html) and [**config.ncconf**](https://www.alachisoft.com/resources/docs/ncache/admin-guide/config-ncconf.html) files will be included in your project. 
 
   The project **config.ncconf** file is used to configure a [local in-process NCache server](https://www.alachisoft.com/resources/docs/ncache/admin-guide/local-cache.html) that can be used to test your application without have to install NCache. For out-of-process local caches and clustered caches, the **config.ncconf** files used in the cache servers of your cache cluster will reside in the **%NCHOME%/Config** folder of each of the servers. Here **%NCHOME%** refers to the NCache installation directory e.g. **C:\Program Files\NCache**.
 
-- **STEP 4:**
+- **STEP 2:**
 
   The **client.ncconf** file can be used to configure the cache client for accessing the NCache cluster. This is optional in the case where NCache installation is available on the client machine whereby the client.ncconf file will be found in **%NCHOME%\Config** folder. 
 
@@ -39,7 +31,7 @@ follow the minimalistic instructions in this guide.
 
   An example of a **client.ncconf** file can be found in the [sample application](./samples/cache-api-sample/CacheAPISample/).
 
-  **STEP 5:**
+  **STEP 3:**
 
   Make the following changes in your application ***.csproj*** and ***.cs*** files:
 
@@ -56,7 +48,7 @@ follow the minimalistic instructions in this guide.
     - Microsoft.ApplicationServer.Caching.Core
     ```
 
-- **STEP 6:**
+- **STEP 4:**
 
   Add the following keys and values to the ***appSettings*** section of your app.config or web.config file:
 
@@ -81,7 +73,7 @@ follow the minimalistic instructions in this guide.
  
     This is the expiration time set on cached items with the format of ***hrs : minutes : seconds***. TTL has no effect if ***Expirable*** is set to ***False***. If the ***Expirable*** key is set to ***True*** and no TTL is given, then the default expiration time of **10 min** will be used on the cached items.
 
-- **STEP 7:**
+- **STEP 5:**
 
    Make sure that the cache with the Id given in the **client.ncconf** file with the given cache server configurations (IP addresses and ports) is created and running. If you are using a local in-process cache as configured in the project **config.ncconf** file, then that server is already available and there is no need to create and run it.
 
