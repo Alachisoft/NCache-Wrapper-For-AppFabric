@@ -2151,7 +2151,7 @@ namespace Alachisoft.NCache.Data.Caching
 
                 var cacheKey = DataFormatter.MarshalKey(key);
 
-                var cacheItem = _cache.GetCacheItem(key);
+                var cacheItem = _cache.GetCacheItem(cacheKey);
 
                 if (cacheItem == null)
                 {
@@ -2190,7 +2190,7 @@ namespace Alachisoft.NCache.Data.Caching
 
                 var cacheKey = DataFormatter.MarshalKey(key, region);
 
-                var cacheItem = _cache.GetCacheItem(key);
+                var cacheItem = _cache.GetCacheItem(cacheKey);
 
                 if (cacheItem == null)
                 {
