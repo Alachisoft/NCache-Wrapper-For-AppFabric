@@ -1,263 +1,184 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using Alachisoft.NCache.Web.Caching;
+﻿using Alachisoft.NCache.Client;
+using Alachisoft.NCache.Runtime.Events;
+using System;
 
 namespace Alachisoft.NCache.Data.Caching
 {
-    class CallbackHandler
+    internal class CallbackHandler : ICallBackHandler
     {
-        public string CacheId { get; set; }
+        internal string CacheId { get; set; }
+        internal string Region { get; set; }
+        internal DataCacheNotificationDescriptor NotificationDescriptor { get; set; }
 
-        public string Region { get; set; }
-
-        public DataCacheNotificationDescriptor NotificationDescriptor { get; set; }
-
-        internal CacheEventDescriptor NCacheEventDescriptor { get; set; }
-
-        public DataCacheOperations Operation { get; set; }
-
-        public DataCacheNotificationCallback Callback { get; set; }
-
-        internal CallbackType Type {get; set;}
-
+        internal DataCacheOperations Operation { get; set; }
+        internal DataCacheNotificationCallback Callback { get; set; }
+        internal CallbackType Type { get; set; }
         internal string Key { get; set; }
+        public CacheEventDescriptor NCacheEventDescriptor { get; set; }
 
-        private DataFormatter _formatter = new DataFormatter();
-
-        public void OnItemAdded(string key)
+        internal void OnCacheDataModification(string key, CacheEventArg args)
         {
-            string[] keyRegion=_formatter.SplitKeyAndRegion(key);
-            if (Type == CallbackType.CacheLevelCallback)
+            if (args.EventType == EventType.ItemAdded)
             {
-                if (Callback != null && (Operation & DataCacheOperations.AddItem) == DataCacheOperations.AddItem)
+                OnItemAdded(key, args);
+            }
+            else if (args.EventType == EventType.ItemUpdated)
+            {
+                OnItemUpdate(key, args);
+            }
+            else
+            {
+                OnItemRemove(key, args);
+            }
+        }
+        private void OnItemAdded(string key, CacheEventArg args)
+        {
+            if (key.StartsWith(Constants.CREATE_REGION_KEY))
+            {
+                var region = key.Replace(Constants.CREATE_REGION_KEY, "");
+                if (Type == CallbackType.CacheLevelCallback || (Type == CallbackType.RegionSpecificCallback && Region == region))
                 {
-                    Callback(CacheId, keyRegion[1], keyRegion[0], null, DataCacheOperations.AddItem, NotificationDescriptor);
+                    if (Callback != null && (Operation & DataCacheOperations.CreateRegion) == DataCacheOperations.CreateRegion)
+                    {
+                        Callback(CacheId, region, "", null, DataCacheOperations.CreateRegion, NotificationDescriptor);
+                    }
                 }
             }
-            else if (Type == CallbackType.RegionSpecificCallback)
+            else
             {
-                if (Region == keyRegion[1])
+                var keyRegion = DataFormatter.SplitKeyAndRegion(key);
+                if (Validate(Type, keyRegion, Key, Region, Callback))
                 {
-                    if (Callback != null && (Operation & DataCacheOperations.AddItem) == DataCacheOperations.AddItem)
+                    if ((Operation & DataCacheOperations.AddItem) == DataCacheOperations.AddItem)
                     {
-                        Callback(CacheId, keyRegion[1], keyRegion[0], null, DataCacheOperations.AddItem, NotificationDescriptor);
+                        var cacheItemVersion = args.Item.CacheItemVersion;
+                        var version = new DataCacheItemVersion(cacheItemVersion);
+                        Callback(CacheId, keyRegion[1], keyRegion[0], version, DataCacheOperations.AddItem, NotificationDescriptor);
                     }
                 }
             }
         }
-
-        public void OnItemUpdate(string key)
+        private void OnItemUpdate(string key, CacheEventArg args)
         {
-            string[] keyRegion = _formatter.SplitKeyAndRegion(key);
-            if (Type == CallbackType.CacheLevelCallback)
+            if (key.StartsWith(Constants.CREATE_REGION_KEY))
             {
-                if (Callback != null && (Operation & DataCacheOperations.ReplaceItem) == DataCacheOperations.ReplaceItem)
+                var region = key.Replace(Constants.CREATE_REGION_KEY, "");
+                if (Type == CallbackType.CacheLevelCallback || (Type == CallbackType.RegionSpecificCallback && Region == region))
                 {
-                    Callback(CacheId, keyRegion[1], keyRegion[0], null, DataCacheOperations.ReplaceItem, NotificationDescriptor);
-                }
-            }
-            else if (Type == CallbackType.RegionSpecificCallback)
-            {
-                if (Region == keyRegion[1])
-                {
-                    if (Callback != null && (Operation & DataCacheOperations.ReplaceItem) == DataCacheOperations.ReplaceItem)
+                    if (Callback != null && (Operation & DataCacheOperations.ClearRegion) == DataCacheOperations.ClearRegion)
                     {
-                        Callback(CacheId, keyRegion[1], keyRegion[0], null, DataCacheOperations.ReplaceItem, NotificationDescriptor);
+                        Callback(CacheId, region, "", null, DataCacheOperations.ClearRegion, NotificationDescriptor);
                     }
                 }
             }
-        }
-
-        public void OnItemRemove(string key,object obj, CacheItemRemovedReason reason)
-        {
-            string[] keyRegion = _formatter.SplitKeyAndRegion(key);
-            if (Type == CallbackType.CacheLevelCallback)
+            else
             {
-                if (Callback != null && (Operation & DataCacheOperations.RemoveItem) == DataCacheOperations.RemoveItem)
+                var keyRegion = DataFormatter.SplitKeyAndRegion(key);
+                if (Validate(Type, keyRegion, Key, Region, Callback))
                 {
-                    Callback(CacheId, keyRegion[1], keyRegion[0], null, DataCacheOperations.RemoveItem, NotificationDescriptor);
+                    if ((Operation & DataCacheOperations.ReplaceItem) == DataCacheOperations.ReplaceItem)
+                    {
+                        var cacheItemVersion = args.Item.CacheItemVersion;
+                        var version = new DataCacheItemVersion(cacheItemVersion);
+                        Callback(CacheId, keyRegion[1], keyRegion[0], version, DataCacheOperations.ReplaceItem, NotificationDescriptor);
+                    }
                 }
             }
-            else if (Type == CallbackType.RegionSpecificCallback)
+
+        }
+        private void OnItemRemove(string key, CacheEventArg args)
+        {
+            if (key.StartsWith(Constants.CREATE_REGION_KEY))
             {
-                if (Region == keyRegion[1])
+                var region = key.Replace(Constants.CREATE_REGION_KEY, "");
+
+                if (Type == CallbackType.CacheLevelCallback || (Type == CallbackType.RegionSpecificCallback && Region == region))
                 {
-                    if (Callback != null && (Operation & DataCacheOperations.RemoveItem) == DataCacheOperations.RemoveItem)
+                    if (Callback != null && (Operation & DataCacheOperations.RemoveRegion) == DataCacheOperations.RemoveRegion)
                     {
+                        Callback(CacheId, region, "", null, DataCacheOperations.RemoveRegion, NotificationDescriptor);
+                    }
+                }
+            }
+            else
+            {
+                var keyRegion = DataFormatter.SplitKeyAndRegion(key);
+
+                if (Validate(Type, keyRegion, Key, Region, Callback))
+                {
+                    if ((Operation & DataCacheOperations.RemoveItem) == DataCacheOperations.RemoveItem)
+                    {
+                        var cacheItemVersion = args.Item.CacheItemVersion;
+                        var version = new DataCacheItemVersion(cacheItemVersion);
                         Callback(CacheId, keyRegion[1], keyRegion[0], null, DataCacheOperations.RemoveItem, NotificationDescriptor);
                     }
                 }
             }
         }
 
-        public void OnRegionClear(object region)
+        private static bool Validate(CallbackType type, string[] keyRegion, string key, string region, DataCacheNotificationCallback callBack)
         {
-            if (Callback != null && (Operation & DataCacheOperations.ClearRegion) == DataCacheOperations.ClearRegion)
+            if (callBack == null)
             {
-                Callback(CacheId, (string)region, null, null, DataCacheOperations.ClearRegion, NotificationDescriptor);
+                return false;
+            }
+            else if (type == CallbackType.CacheLevelCallback)
+            {
+                return true;
+            }
+            else if (type == CallbackType.RegionSpecificCallback && region == keyRegion[1])
+            {
+                return true;
+            }
+            else if (type == CallbackType.ItemSpecificCallback && key == keyRegion[0])
+            {
+                return true;
+            }
+            else if (type == CallbackType.RegionSpecificItemCallback && key == keyRegion[0] && region == keyRegion[1])
+            {
+                return true;
+            }
+            else
+            {
+                return false;
             }
         }
 
-        public void OnRegionAdd(object region)
+
+
+        internal static EventType GetEventType(DataCacheOperations operation)
         {
-            if (Callback != null && (Operation & DataCacheOperations.CreateRegion) == DataCacheOperations.CreateRegion)
+            EventType eventType = (EventType)0;
+
+            var addItem = (operation & DataCacheOperations.AddItem) == DataCacheOperations.AddItem;
+
+            var updateItem = (operation & DataCacheOperations.ReplaceItem) == DataCacheOperations.ReplaceItem;
+
+            var removeItem = (operation & DataCacheOperations.RemoveItem) == DataCacheOperations.RemoveItem;
+
+            var createRegion = (operation & DataCacheOperations.CreateRegion) == DataCacheOperations.CreateRegion;
+
+            var removeRegion = (operation & DataCacheOperations.RemoveRegion) == DataCacheOperations.RemoveRegion;
+
+            var clearRegion = (operation & DataCacheOperations.ClearRegion) == DataCacheOperations.ClearRegion;
+
+            if (addItem || createRegion || clearRegion)
             {
-                Callback(CacheId, (string)region, null, null, DataCacheOperations.CreateRegion, NotificationDescriptor);
+                eventType |= EventType.ItemAdded;
             }
+
+            if (updateItem)
+            {
+                eventType |= EventType.ItemUpdated;
+            }
+
+            if (removeItem || removeRegion)
+            {
+                eventType |= EventType.ItemRemoved;
+            }
+
+            return eventType;
         }
 
-        public void OnRegionDeletion(object region)
-        {
-            if (Callback != null && (Operation & DataCacheOperations.RemoveRegion) == DataCacheOperations.RemoveRegion)
-            {
-                Callback(CacheId, (string)region, null, null, DataCacheOperations.RemoveRegion, NotificationDescriptor);
-            }
-        }
-
-        public void OnSpecificItemUpdate(string key)
-        {
-            string[] keyRegion = _formatter.SplitKeyAndRegion(key);
-            if (Type == CallbackType.ItemSpecificCallback)
-            {
-                if (Callback != null && (Operation & DataCacheOperations.ReplaceItem) == DataCacheOperations.ReplaceItem)
-                {
-                    Callback(CacheId, keyRegion[1], keyRegion[0], null, DataCacheOperations.ReplaceItem, NotificationDescriptor);
-                }
-            }
-            else if (Type == CallbackType.RegionSpecificItemCallback)
-            {
-                if (Region == keyRegion[1])
-                {
-                    if (Callback != null && (Operation & DataCacheOperations.ReplaceItem) == DataCacheOperations.ReplaceItem)
-                    {
-                        Callback(CacheId, keyRegion[1], keyRegion[0], null, DataCacheOperations.ReplaceItem, NotificationDescriptor);
-                    }
-                }
-            }
-        }
-
-        public void OnSpecificItemRemoved(string key,object value,Alachisoft.NCache.Web.Caching.CacheItemRemovedReason reason)
-        {
-            string[] keyRegion = _formatter.SplitKeyAndRegion(key);
-            if (Type == CallbackType.ItemSpecificCallback)
-            {
-                if (Callback != null && (Operation & DataCacheOperations.RemoveItem) == DataCacheOperations.RemoveItem)
-                {
-                    Callback(CacheId, keyRegion[1], keyRegion[0], null, DataCacheOperations.RemoveItem, NotificationDescriptor);
-                }
-            }
-            else if (Type == CallbackType.RegionSpecificItemCallback)
-            {
-                if (Region == keyRegion[1])
-                {
-                    if (Callback != null && (Operation & DataCacheOperations.RemoveItem) == DataCacheOperations.RemoveItem)
-                    {
-                        Callback(CacheId, keyRegion[1], keyRegion[0], null, DataCacheOperations.RemoveItem, NotificationDescriptor);
-                    }
-                }
-            }
-        }
-
-        public void RegisterRegionCallback(object region, object opCode)
-        {
-            CallbackType operation= (CallbackType) opCode;
-            if (operation == CallbackType.AddRegion)
-            {
-                this.OnRegionAdd(region);
-            }
-            if (operation == CallbackType.ClearRegion)
-            {
-                this.OnRegionClear(region);
-            }
-            if (operation == CallbackType.RemoveRegion)
-            {
-                this.OnRegionDeletion(region);
-            }
-        }
-
-        public CacheDataNotificationCallback GetNCacheNotificationCallback(DataCacheNotificationCallback callback, Runtime.Events.EventType nEvent)
-        {
-            if(nEvent.ToString().Equals("ItemAdded"))
-            {
-                return new CacheDataNotificationCallback(NCacheItemAddedCallback);
-            }
-            if (nEvent.ToString().Equals("ItemUpdated"))
-            {
-                return new CacheDataNotificationCallback(NCacheItemUpdatedCallback);
-            }
-            if (nEvent.ToString().Equals("ItemRemoved"))
-            {
-                return new CacheDataNotificationCallback(NCacheItemRemovedCallback);
-            }
-            return null;
-        }
-
-        public void NCacheItemAddedCallback(string key, CacheEventArg args)
-        {
-            string[] keyRegion = _formatter.SplitKeyAndRegion(key);
-            if (Type == CallbackType.CacheLevelCallback)
-            {
-                if (Callback != null && (Operation & DataCacheOperations.AddItem) == DataCacheOperations.AddItem)
-                {
-                    Callback(CacheId, keyRegion[1], keyRegion[0], null, DataCacheOperations.AddItem, NotificationDescriptor);
-                }
-            }
-            else if (Type == CallbackType.RegionSpecificCallback)
-            {
-                if (Region == keyRegion[1])
-                {
-                    if (Callback != null && (Operation & DataCacheOperations.AddItem) == DataCacheOperations.AddItem)
-                    {
-                        Callback(CacheId, keyRegion[1], keyRegion[0], null, DataCacheOperations.AddItem, NotificationDescriptor);
-                    }
-                }
-            }
-        }
-
-        public void NCacheItemUpdatedCallback(string key, CacheEventArg args)
-        {
-            string[] keyRegion = _formatter.SplitKeyAndRegion(key);
-            if (Type == CallbackType.CacheLevelCallback)
-            {
-                if (Callback != null && (Operation & DataCacheOperations.ReplaceItem) == DataCacheOperations.ReplaceItem)
-                {
-                    Callback(CacheId, keyRegion[1], keyRegion[0], null, DataCacheOperations.ReplaceItem, NotificationDescriptor);
-                }
-            }
-            else if (Type == CallbackType.RegionSpecificCallback)
-            {
-                if (Region == keyRegion[1])
-                {
-                    if (Callback != null && (Operation & DataCacheOperations.ReplaceItem) == DataCacheOperations.ReplaceItem)
-                    {
-                        Callback(CacheId, keyRegion[1], keyRegion[0], null, DataCacheOperations.ReplaceItem, NotificationDescriptor);
-                    }
-                }
-            }
-        }
-        
-        public void NCacheItemRemovedCallback(string key, CacheEventArg args)
-        {
-            string[] keyRegion = _formatter.SplitKeyAndRegion(key);
-            if (Type == CallbackType.CacheLevelCallback)
-            {
-                if (Callback != null && (Operation & DataCacheOperations.RemoveItem) == DataCacheOperations.RemoveItem)
-                {
-                    Callback(CacheId, keyRegion[1], keyRegion[0], null, DataCacheOperations.RemoveItem, NotificationDescriptor);
-                }
-            }
-            else if (Type == CallbackType.RegionSpecificCallback)
-            {
-                if (Region == keyRegion[1])
-                {
-                    if (Callback != null && (Operation & DataCacheOperations.RemoveItem) == DataCacheOperations.RemoveItem)
-                    {
-                        Callback(CacheId, keyRegion[1], keyRegion[0], null, DataCacheOperations.RemoveItem, NotificationDescriptor);
-                    }
-                }
-            }
-        }
     }
 }
