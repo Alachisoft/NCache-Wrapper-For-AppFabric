@@ -1,22 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
 namespace Alachisoft.NCache.Data.Caching
 {
-    public class DataCacheFactoryConfiguration :ICloneable
+    public class DataCacheFactoryConfiguration
     {
-        #region[    Constructor ]
-        public DataCacheFactoryConfiguration()
-        { }
-        #endregion
-
-        public TimeSpan ChannelOpenTimeout { get; set; }
+        public TimeSpan ChannelOpenTimeout { get; set; } = TimeSpan.FromSeconds(3);
         public DataCacheLocalCacheProperties LocalCacheProperties { get; set; }
         public int MaxConnectionsToServer { get; set; }
         public DataCacheNotificationProperties NotificationProperties { get; set; }
-        public TimeSpan RequestTimeout { get; set; }
+        public TimeSpan RequestTimeout { get; set; } = TimeSpan.FromSeconds(15000);
         public DataCacheSecurity SecurityProperties { get; set; }
         public IEnumerable<DataCacheServerEndpoint> Servers { get; set; }
         public DataCacheTransportProperties TransportProperties { get; set; }
