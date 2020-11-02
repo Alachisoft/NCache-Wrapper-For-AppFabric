@@ -1,26 +1,34 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using Newtonsoft.Json;
+using System.Threading;
 
 namespace Alachisoft.NCache.Data.Caching
 {
     public class DataCacheNotificationDescriptor
     {
-        public string CacheName
+        internal DataCacheNotificationDescriptor(
+            string cacheName)
         {
-            get { return _cacheName; }
-            internal set {_cacheName= value; }
-        }
-        public long DelegateId
-        {
-            get { return _delegateId; }
-            internal set { _delegateId = value; }
+            CacheName = cacheName;
+            DelegateId = Interlocked.Increment(ref globalDelegateID);
         }
 
-        #region [private members]
-        private string _cacheName;
-        private long _delegateId;
-        #endregion
+        internal DataCacheNotificationDescriptor(DataCacheNotificationDescriptor other)
+        {
+            CacheName = other.CacheName;
+            DelegateId = other.DelegateId;
+        }
+        public string CacheName { get; }
+        public long DelegateId { get; }
+
+        private static long globalDelegateID = 0L;
+
+        public override string ToString()
+        {
+            if (this == null)
+            {
+                return null;
+            }
+            return JsonConvert.SerializeObject(this);
+        }
     }
 }
