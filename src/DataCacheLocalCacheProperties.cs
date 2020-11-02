@@ -4,7 +4,6 @@ namespace Alachisoft.NCache.Data.Caching
 {
     public class DataCacheLocalCacheProperties
     {
-        #region[    Constructors    ]
         public DataCacheLocalCacheProperties()
         {
             DefaultTimeout = TimeSpan.Zero;
@@ -12,7 +11,7 @@ namespace Alachisoft.NCache.Data.Caching
             IsEnabled = false;
             ObjectCount = 50000L;
         }
-        public DataCacheLocalCacheProperties(long objectCount, TimeSpan defaultTimeout, DataCacheLocalCacheInvalidationPolicy invalidationPolicy) 
+        public DataCacheLocalCacheProperties(long objectCount, TimeSpan defaultTimeout, DataCacheLocalCacheInvalidationPolicy invalidationPolicy)
         {
             ObjectCount = objectCount;
             DefaultTimeout = defaultTimeout;
@@ -26,12 +25,10 @@ namespace Alachisoft.NCache.Data.Caching
             InvalidationPolicy = other.InvalidationPolicy;
             IsEnabled = other.IsEnabled;
         }
-        #endregion
-
-        public TimeSpan DefaultTimeout { get; private set; }
-        public DataCacheLocalCacheInvalidationPolicy InvalidationPolicy { get; private set; }
-        public bool IsEnabled { get; private set; }
-        public long ObjectCount { get; private set; }
+        public TimeSpan DefaultTimeout { get; }
+        public DataCacheLocalCacheInvalidationPolicy InvalidationPolicy { get; }
+        public bool IsEnabled { get; }
+        public long ObjectCount { get; }
 
         public override bool Equals(object obj)
         {
@@ -63,7 +60,7 @@ namespace Alachisoft.NCache.Data.Caching
         {
             unchecked
             {
-                return base.GetHashCode(); 
+                return base.GetHashCode();
             }
         }
     }
