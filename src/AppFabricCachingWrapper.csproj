@@ -124,8 +124,12 @@
     <Compile Include="BaseOperationNotification.cs" />
     <Compile Include="DataCacheClientLogManager.cs" />
     <Compile Include="DataCacheErrorCode.cs" />
-    <Compile Include="DataCacheTraceSink.cs" />
+    <Compile Include="DataCacheErrorSubStatus.cs" />
+    <Compile Include="NCache Handler\BulkCallbackHandler.cs" />
     <Compile Include="NCache Handler\CallbackHandler.cs" />
+    <Compile Include="NCache Handler\ICallBackHandler.cs" />
+    <Compile Include="Util\CacheKey.cs" />
+    <Compile Include="Util\CacheTag.cs" />
     <Compile Include="Util\CallbackType.cs" />
     <Compile Include="DataCache.cs" />
     <Compile Include="DataCacheBulkNotificationCallback.cs" />
@@ -142,6 +146,7 @@
     <Compile Include="DataCacheServerEndpoint.cs" />
     <Compile Include="DataCacheTransportProperties.cs" />
     <Compile Include="NCache Handler\CacheHandler.cs" />
+    <Compile Include="Util\Constants.cs" />
     <Compile Include="Util\DataFormatter.cs" />
     <Compile Include="DataCacheFailureNotificationCallback.cs" />
     <Compile Include="DataCacheItem.cs" />

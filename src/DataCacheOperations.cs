@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 namespace Alachisoft.NCache.Data.Caching
 {
@@ -13,6 +10,6 @@ namespace Alachisoft.NCache.Data.Caching
         RemoveItem = 4,
         CreateRegion = 8,
         RemoveRegion = 16,
-        ClearRegion = 32,
+        ClearRegion = 32
     }
 }

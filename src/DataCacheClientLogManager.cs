@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
+﻿using System.Diagnostics;
 
 namespace Alachisoft.NCache.Data.Caching
 {
@@ -12,7 +8,5 @@ namespace Alachisoft.NCache.Data.Caching
         {
             return TraceLevel.Off;
         }
-        public static void SetSink(DataCacheTraceSink traceSink, TraceLevel traceLevel)
-        { }
     }
 }

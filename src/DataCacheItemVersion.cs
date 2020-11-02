@@ -1,159 +1,114 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using Alachisoft.NCache.Web.Caching;
+﻿using Alachisoft.NCache.Client;
+using System;
 
 namespace Alachisoft.NCache.Data.Caching
 {
     public class DataCacheItemVersion : IComparable<DataCacheItemVersion>
     {
-        internal CacheItemVersion _itemVersion;
+        internal DataCacheItemVersion(CacheItemVersion itemVersion)
+        {
+            this.itemVersion = itemVersion;
+        }
+        internal CacheItemVersion itemVersion { get; }
 
-        public static bool operator !=(DataCacheItemVersion left, DataCacheItemVersion right) 
-        {
-            if ((object.ReferenceEquals(null, left)) && (object.ReferenceEquals(null, right)))
-            {
-                return false;
-            }
-            else if (object.ReferenceEquals(null, right))
-            {
-                if (object.ReferenceEquals(null, left))
-                {
-                    return false;
-                }
-                else
-                {
-                    return true;
-                }
-            }
-            else
-            {
-                if (left._itemVersion.Version != right._itemVersion.Version)
-                {
-                    return true;
-                }
-                else
-                {
-                    return false;
-                }
-            }
-        }
-        public static bool operator <(DataCacheItemVersion left, DataCacheItemVersion right) 
-        {
-            if ((object.ReferenceEquals(null, left)) && (object.ReferenceEquals(null, right)))
-            {
-                return false;
-            }
-            else if (object.ReferenceEquals(null, right))
-            {
-                if (!object.ReferenceEquals(null, left))
-                {
-                    return true;
-                }
-                else
-                    return false;
-            }
-            else
-            {
-                if (left._itemVersion.Version < right._itemVersion.Version)
-                {
-                    return true;
-                }
-                else
-                {
-                    return false;
-                }
-            }
-        }
         public static bool operator ==(DataCacheItemVersion left, DataCacheItemVersion right)
         {
-            if (object.ReferenceEquals(left, null) && object.ReferenceEquals(right, null))
+            if (ReferenceEquals(null, left) && ReferenceEquals(null, right))
             {
                 return true;
             }
-            else if (object.ReferenceEquals(right, null))
-            {
-                if (!object.ReferenceEquals(left, null))
-                {
-                    return false;
-                }
-                else
-                    return true;
-            }
-            else
-            {
-                if (left._itemVersion.Version == right._itemVersion.Version)
-                {
-                    return true;
-                }
-                else
-                {
-                    return false;
-                }
-            }
-        }
-        public static bool operator >(DataCacheItemVersion left, DataCacheItemVersion right)
-        {
-            if (object.ReferenceEquals(left, null) && object.ReferenceEquals(right, null))
+            else if (!ReferenceEquals(null, left) && ReferenceEquals(null, right))
             {
                 return false;
             }
-            else if (object.ReferenceEquals(right, null))
+            else if (ReferenceEquals(null, left) && !ReferenceEquals(null, right))
             {
-                if (!object.ReferenceEquals(left, null))
-                {
-                    return true;
-                }
-                else
-                    return false;
+                return false;
             }
             else
             {
-                if (left._itemVersion.Version > right._itemVersion.Version)
-                {
-                    return true;
-                }
-                else
-                {
-                    return false;
-                }
+                return left.itemVersion.Version == right.itemVersion.Version;
             }
         }
 
+        public static bool operator <(DataCacheItemVersion left, DataCacheItemVersion right)
+        {
+            if (ReferenceEquals(null, left) && ReferenceEquals(null, right))
+            {
+                return false;
+            }
+            else if (ReferenceEquals(null, left) && !ReferenceEquals(null, right))
+            {
+                return true;
+            }
+            else if (!ReferenceEquals(null, left) && ReferenceEquals(null, right))
+            {
+                return false;
+            }
+            else
+            {
+                return left.itemVersion.Version < right.itemVersion.Version;
+            }
+        }
+
+        public static bool operator !=(DataCacheItemVersion left, DataCacheItemVersion right)
+        {
+            return !(left == right);
+        }
+
+        public static bool operator >(DataCacheItemVersion left, DataCacheItemVersion right)
+        {
+            if (ReferenceEquals(null, left) && ReferenceEquals(null, right))
+            {
+                return false;
+            }
+            else if (ReferenceEquals(null, left) && !ReferenceEquals(null, right))
+            {
+                return false;
+            }
+            else if (!ReferenceEquals(null, left) && ReferenceEquals(null, right))
+            {
+                return true;
+            }
+            else
+            {
+                return left.itemVersion.Version > right.itemVersion.Version;
+            }
+        }
+
+        public override bool Equals(object obj)
+        {
+            DataCacheItemVersion other = obj as DataCacheItemVersion;
+            return this == other;
+        }
+
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                if (this == null)
+                {
+                    return base.GetHashCode();
+                }
+                else
+                {
+                    return ("DataCacheItemVersion" + itemVersion.Version).GetHashCode();
+                }
+            }
+        }
         public int CompareTo(DataCacheItemVersion other)
         {
-            if (other == null)
-            {
-                return 1;
-            }
-            if (this._itemVersion.Version == other._itemVersion.Version)
+            if (this == other)
             {
                 return 0;
             }
-            else if (this._itemVersion.Version < other._itemVersion.Version)
+            else if (this < other)
             {
                 return -1;
             }
             else
             {
                 return 1;
-            }
-        }
-        public override bool Equals(object obj)
-        {
-            DataCacheItemVersion other = obj as DataCacheItemVersion;
-            return this == other;
-        }
-        public override int GetHashCode()
-        {
-            if (this == null)
-            {
-                return base.GetHashCode();
-            }
-            else
-            {
-                return ("DataCacheItemVersion" + _itemVersion.Version).GetHashCode();
             }
         }
     }

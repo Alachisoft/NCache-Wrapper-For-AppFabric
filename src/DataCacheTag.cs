@@ -1,24 +1,15 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using Alachisoft.NCache.Runtime;
-using Alachisoft.NCache.Runtime.Caching;
 
 namespace Alachisoft.NCache.Data.Caching
 {
-
     public class DataCacheTag
     {
-        #region [   Constructor ]
-        public DataCacheTag(String tag)
+        internal readonly string tag;
+
+        public DataCacheTag(string tg)
         {
-            _tag = new Tag(tag);
+            tag = string.IsNullOrWhiteSpace(tg) ? throw new ArgumentNullException(nameof(tg), "Value cannot be null.") : tg.Trim();
         }
-        #endregion
-
-        internal Tag _tag;
-
         public override bool Equals(object obj)
         {
             if (this is null)
@@ -43,7 +34,7 @@ namespace Alachisoft.NCache.Data.Caching
                 return false;
             }
 
-            return _tag.Equals(other._tag);
+            return tag.Equals(other.tag);
         }
 
         public override int GetHashCode()
@@ -55,13 +46,13 @@ namespace Alachisoft.NCache.Data.Caching
                     return base.GetHashCode();
                 }
 
-                return _tag.GetHashCode();
+                return tag.GetHashCode();
             }
         }
 
         public override string ToString()
         {
-            return _tag.ToString();
+            return tag;
         }
     }
 }

@@ -1,534 +1,4042 @@
-﻿using System;
+﻿using Alachisoft.NCache.Client;
+using Alachisoft.NCache.Common.ErrorHandling;
+using Alachisoft.NCache.Runtime.Caching;
+using Alachisoft.NCache.Runtime.Events;
+using Alachisoft.NCache.Runtime.Exceptions;
+using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using Alachisoft.NCache.Web.Caching;
-using Alachisoft.NCache.Web;
-using Alachisoft.NCache.Runtime.Caching;
-using System.Collections;
-using System.Configuration;
-using System.Runtime.Serialization;
 
-namespace Alachisoft.NCache.Data.Caching.Handler
+namespace Alachisoft.NCache.Data.Caching
 {
-    /// <summary>
-    /// provides handler for all internal NCache calls
-    /// </summary>
     internal class CacheHandler
     {
-        #region [private members]
-        
-        private DataFormatter _formatter;
-        private Cache _NCache;
-        private bool _addRegionCheck;
-        private bool _removeRegionCheck;
-        private bool _clearRegionCheck;
-        #endregion
+        private readonly ICache _cache;
+        private readonly TimeSpan _defaultTimeout;
+        private readonly bool _expirable;
+        private readonly string _cacheName;
+        private readonly ConcurrentDictionary<string, ICallBackHandler> _callbackMap;
 
-        #region[    Constructor    ]
-        internal CacheHandler(Alachisoft.NCache.Web.Caching.Cache cache)
+
+        internal CacheHandler(string cacheName, CacheConnectionOptions connectionOptions, bool expirable, TimeSpan defaultTimeout)
         {
-           
-            _NCache = cache;
-            _addRegionCheck=false;
-            _removeRegionCheck = false;
-            _clearRegionCheck = false;
-            _formatter = new DataFormatter();
-           
-        }
-        #endregion
+            _cacheName = cacheName.Trim();
+            _expirable = expirable;
+
+            _defaultTimeout = defaultTimeout;
 
 
-        internal DataCacheItemVersion Add(string key, object value, IEnumerable<DataCacheTag> tags, TimeSpan timeOut, string region)
-        {
-            string expirationCheck = ConfigurationManager.AppSettings["Expirable"] ?? "false";
-            
-
-            expirationCheck=expirationCheck.ToLower();
-            try
+            if (connectionOptions == null)
             {
-                CacheItem _item=null;
-                if (expirationCheck.Equals("true"))
-                {
-                    if (timeOut == TimeSpan.Zero)
-                    {
-                        string TTL = ConfigurationManager.AppSettings["TTL"] ?? "00:10:00";
-                        TimeSpan tempTimeOut = TimeSpan.Parse(TTL);
-                        if (!String.IsNullOrWhiteSpace(TTL) && tempTimeOut != TimeSpan.Zero)
-                        {
-                            _item = _formatter.CreateCacheItem(value, tags, region, tempTimeOut);
-                        }
-                        else if (String.IsNullOrWhiteSpace(TTL))
-                        {
-                            _item = _formatter.CreateCacheItem(value, tags, region, TimeSpan.Zero);
-                        }
-                    }
-                    else
-                    {
-                        _item = _formatter.CreateCacheItem(value, tags, region,timeOut);
-                    }
-                }
-                else if (expirationCheck.Equals("false"))
-                {
-                    _item = _formatter.CreateCacheItem(value, tags, region);
-                }
-                string _key = _formatter.MarshalKey(key,region);
-                CacheItemVersion _version = _NCache.Add(_key, _item);
-                return _formatter.ConvertToAPVersion(_version);
+                _cache = CacheManager.GetCache(cacheName.Trim());
             }
-            catch (Exception exp)
+            else
             {
-                throw exp;
+                _cache = CacheManager.GetCache(cacheName.Trim(), connectionOptions);
             }
+
+            _callbackMap = new ConcurrentDictionary<string, ICallBackHandler>();
         }
 
-        internal void Clear()
+
+        internal object Get(string key)
         {
             try
             {
-                _NCache.Clear();
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key);
+                return _cache.Get<object>(cacheKey);
             }
-            catch (Exception exp)
+            catch (Exception e)
             {
-                throw exp;
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    throw CommonCacheExceptions(ex);
+                }
+                else
+                {
+                    throw e;
+                }
             }
         }
 
-        internal void CreateRegion(string region)
+        internal object Get(string key, string region)
         {
-            if (_addRegionCheck == true)
+            try
             {
-                _NCache.RaiseCustomEvent(region, CallbackType.AddRegion);
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (string.IsNullOrWhiteSpace(region))
+                {
+                    throw new ArgumentNullException(nameof(region), "Value cannot be null.");
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key, region);
+                return _cache.Get<object>(cacheKey);
             }
-        }
-       
-        internal void RegisterRegionCallBack(CallbackType opcode)
-        {
-            CallbackHandler _callbackHandle = new CallbackHandler();
-            if (opcode == CallbackType.AddRegion)
+            catch (Exception e)
             {
-                _NCache.CustomEvent += new CustomEventCallback(_callbackHandle.RegisterRegionCallback);
-                _addRegionCheck = true;
-            }
-            else if (opcode == CallbackType.ClearRegion)
-            {
-                _NCache.CustomEvent += new CustomEventCallback(_callbackHandle.RegisterRegionCallback);
-                _clearRegionCheck = true;
-            }
-            else if (opcode == CallbackType.RemoveRegion)
-            {
-                _NCache.CustomEvent += new CustomEventCallback(_callbackHandle.RegisterRegionCallback);
-                _removeRegionCheck = true;
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    throw CommonCacheExceptions(ex);
+                }
+                else
+                {
+                    throw e;
+                }
             }
         }
 
-        internal void UnRegisterRegionCallBack(CallbackType opcode)
+        internal object Get(string key, out DataCacheItemVersion version)
         {
-            CallbackHandler _callbackHandle = new CallbackHandler();
-            if (opcode == CallbackType.AddRegion)
+            try
             {
-                _NCache.CustomEvent -= new CustomEventCallback(_callbackHandle.RegisterRegionCallback);
-                _addRegionCheck = false;
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key);
+
+                version = null;
+                CacheItemVersion cacheItemVersion = null;
+
+                var item = _cache.Get<object>(cacheKey, ref cacheItemVersion);
+
+                if (item != null)
+                {
+                    version = new DataCacheItemVersion(cacheItemVersion);
+                }
+
+                return item;
             }
-            else if (opcode == CallbackType.ClearRegion)
+            catch (Exception e)
             {
-                _NCache.CustomEvent -= new CustomEventCallback(_callbackHandle.RegisterRegionCallback);
-                _clearRegionCheck = false;
-            }
-            else if (opcode == CallbackType.RemoveRegion)
-            {
-                _NCache.CustomEvent -= new CustomEventCallback(_callbackHandle.RegisterRegionCallback);
-                _removeRegionCheck = false;
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    throw CommonCacheExceptions(ex);
+                }
+                else
+                {
+                    throw e;
+                }
             }
         }
 
         internal object Get(string key, out DataCacheItemVersion version, string region)
         {
-            string _key;
-            object obj;
-            version = (DataCacheItemVersion)FormatterServices.GetUninitializedObject(typeof(DataCacheItemVersion));
-            if (string.IsNullOrWhiteSpace(region))
-            {
-                _key = _formatter.MarshalKey(key, null);
-            }
-            else
-            {
-                _key = _formatter.MarshalKey(key, region);
-            }
             try
             {
-                if (version != null)
+                if (string.IsNullOrWhiteSpace(key))
                 {
-                    CacheItemVersion _cItemVersion = _formatter.ConvertToNCacheVersion(version);
-                    obj = _NCache.Get(_key, ref _cItemVersion);
-                    if(_cItemVersion != null)
-                        if (_cItemVersion.Version != null)
-                            version._itemVersion = _cItemVersion;
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (string.IsNullOrWhiteSpace(region))
+                {
+                    throw new ArgumentNullException(nameof(region), "Value cannot be null.");
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key, region);
+
+
+                version = null;
+                CacheItemVersion cacheItemVersion = null;
+
+                var item = _cache.Get<object>(cacheKey, ref cacheItemVersion);
+
+                if (item != null)
+                {
+                    version = new DataCacheItemVersion(cacheItemVersion);
+                }
+
+                return item;
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    throw CommonCacheExceptions(ex);
                 }
                 else
                 {
-                    obj = _NCache.Get(_key);
+                    throw e;
                 }
-                if (obj != null)
+            }
+        }
+
+
+
+
+        internal DataCacheItemVersion Add(string key, object value)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
                 {
-                    return obj;
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (value == null)
+                {
+                    throw new ArgumentNullException(nameof(value), "Value cannot be null.");
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key);
+
+                var cacheItem = DataFormatter.CreateCacheItem(value, null, null, _expirable, _defaultTimeout);
+
+                var cacheItemVersion = _cache.Add(cacheKey, cacheItem);
+
+                return new DataCacheItemVersion(cacheItemVersion);
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.KEY_ALREADY_EXISTS)
+                    {
+                        throw new DataCacheException("Key already exists.")
+                        {
+                            ErrorCode = DataCacheErrorCode.KeyAlreadyExists
+                        };
+                    }
+                    else
+                    {
+                        throw CommonCacheExceptions(ex);
+                    }
                 }
                 else
-                    return null;
-            }
-            catch (Exception exp)
-            {
-                throw exp;
-            }
-        }
-
-        internal IEnumerable<KeyValuePair<string, object>> GetBulk(IEnumerable<string> keys, string region)
-        {
-            string[] keyList = _formatter.MarshalKey(keys, region);
-            IDictionary _temp = _NCache.GetBulk(keyList, DSReadOption.None);
-            IDictionaryEnumerator _tempEnumerator = (IDictionaryEnumerator)_temp.GetEnumerator();
-            while (_tempEnumerator.MoveNext())
-            {
-                DictionaryEntry item = _tempEnumerator.Entry;
-                yield return new KeyValuePair<string, object>(item.Key.ToString(), item.Value);
-            }
-        }
-
-        internal IEnumerable<KeyValuePair<string, object>> GetObjectsByTag(string region, DataCacheTag tag)
-        {
-            Hashtable getByTagResult = new Hashtable();
-            
-            Tag nTag  = _formatter.MarshalTag(tag,region);
-           
-            getByTagResult = _NCache.GetByTag(nTag);
-           
-            if (getByTagResult != null)
-            {
-                foreach (DictionaryEntry entry in getByTagResult)
                 {
-                    object _item =(object) entry.Value;
-                    yield return new KeyValuePair<string, object>(_formatter.UnMarshalKey((string)entry.Key), _item);
+                    throw e;
                 }
             }
         }
-        
+
+        internal DataCacheItemVersion Add(string key, object value, IEnumerable<DataCacheTag> tags)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (value == null)
+                {
+                    throw new ArgumentNullException(nameof(value), "Value cannot be null.");
+                }
+
+                if (tags == null)
+                {
+                    throw new ArgumentNullException(nameof(tags), "Value cannot be null.");
+                }
+
+                if (tags.Count() == 0 || tags.Any(x => x == null))
+                {
+                    throw new ArgumentException("Either the collection passed is empty or one of the tags passed is null.", nameof(tags));
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key);
+
+                var cacheItem = DataFormatter.CreateCacheItem(value, tags, null, _expirable, _defaultTimeout);
+
+                var cacheItemVersion = _cache.Add(cacheKey, cacheItem);
+
+                return new DataCacheItemVersion(cacheItemVersion);
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.KEY_ALREADY_EXISTS)
+                    {
+                        throw new DataCacheException("Key already exists.")
+                        {
+                            ErrorCode = DataCacheErrorCode.KeyAlreadyExists
+                        };
+                    }
+                    else
+                    {
+                        throw CommonCacheExceptions(ex);
+                    }
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+        internal DataCacheItemVersion Add(string key, object value, string region)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (value == null)
+                {
+                    throw new ArgumentNullException(nameof(value), "Value cannot be null.");
+                }
+
+                if (string.IsNullOrWhiteSpace(region))
+                {
+                    throw new ArgumentNullException(nameof(region), "Value cannot be null.");
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key, region);
+
+                var cacheItem = DataFormatter.CreateCacheItem(value, null, region, _expirable, _defaultTimeout);
+
+                var cacheItemVersion = _cache.Add(cacheKey, cacheItem);
+
+                return new DataCacheItemVersion(cacheItemVersion);
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.KEY_ALREADY_EXISTS)
+                    {
+                        throw new DataCacheException("Key already exists.")
+                        {
+                            ErrorCode = DataCacheErrorCode.KeyAlreadyExists
+                        };
+                    }
+                    else if (ex.ErrorCode == ErrorCodes.Common.DEPENDENCY_KEY_NOT_FOUND)
+                    {
+                        throw new DataCacheException("Region not found.")
+                        {
+                            ErrorCode = DataCacheErrorCode.RegionDoesNotExist
+                        };
+                    }
+                    else
+                    {
+                        throw CommonCacheExceptions(ex);
+                    }
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+        internal DataCacheItemVersion Add(string key, object value, TimeSpan timeout)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (value == null)
+                {
+                    throw new ArgumentNullException(nameof(value), "Value cannot be null.");
+                }
+
+                if (timeout <= TimeSpan.Zero)
+                {
+                    throw new ArgumentException("Time-out should be a positive value.", nameof(timeout));
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key);
+
+                var cacheItem = DataFormatter.CreateCacheItem(value, null, null, _expirable, timeout);
+
+                var cacheItemVersion = _cache.Add(cacheKey, cacheItem);
+
+                return new DataCacheItemVersion(cacheItemVersion);
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.KEY_ALREADY_EXISTS)
+                    {
+                        throw new DataCacheException("Key already exists.")
+                        {
+                            ErrorCode = DataCacheErrorCode.KeyAlreadyExists
+                        };
+                    }
+                    else
+                    {
+                        throw CommonCacheExceptions(ex);
+                    }
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+        internal DataCacheItemVersion Add(string key, object value, IEnumerable<DataCacheTag> tags, string region)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (value == null)
+                {
+                    throw new ArgumentNullException(nameof(value), "Value cannot be null.");
+                }
+
+                if (string.IsNullOrWhiteSpace(region))
+                {
+                    throw new ArgumentNullException(nameof(region), "Value cannot be null.");
+                }
+
+                if (tags == null)
+                {
+                    throw new ArgumentNullException(nameof(tags), "Value cannot be null.");
+                }
+
+                if (tags.Count() == 0 || tags.Any(x => x == null))
+                {
+                    throw new ArgumentException("Either the collection passed is empty or one of the tags passed is null.", nameof(tags));
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key, region);
+
+                var cacheItem = DataFormatter.CreateCacheItem(value, tags, region, _expirable, _defaultTimeout);
+
+                var cacheItemVersion = _cache.Add(cacheKey, cacheItem);
+
+                return new DataCacheItemVersion(cacheItemVersion);
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.KEY_ALREADY_EXISTS)
+                    {
+                        throw new DataCacheException("Key already exists.")
+                        {
+                            ErrorCode = DataCacheErrorCode.KeyAlreadyExists
+                        };
+                    }
+                    else if (ex.ErrorCode == ErrorCodes.Common.DEPENDENCY_KEY_NOT_FOUND)
+                    {
+                        throw new DataCacheException("Region not found.")
+                        {
+                            ErrorCode = DataCacheErrorCode.RegionDoesNotExist
+                        };
+                    }
+                    else
+                    {
+                        throw CommonCacheExceptions(ex);
+                    }
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+        internal DataCacheItemVersion Add(string key, object value, TimeSpan timeout, IEnumerable<DataCacheTag> tags)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (value == null)
+                {
+                    throw new ArgumentNullException(nameof(value), "Value cannot be null.");
+                }
+
+                if (tags == null)
+                {
+                    throw new ArgumentNullException(nameof(tags), "Value cannot be null.");
+                }
+
+                if (tags.Count() == 0 || tags.Any(x => x == null))
+                {
+                    throw new ArgumentException("Either the collection passed is empty or one of the tags passed is null.", nameof(tags));
+                }
+
+                if (timeout <= TimeSpan.Zero)
+                {
+                    throw new ArgumentException("Time-out should be a positive value.", nameof(timeout));
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key);
+
+                var cacheItem = DataFormatter.CreateCacheItem(value, tags, null, _expirable, timeout);
+
+                var cacheItemVersion = _cache.Add(cacheKey, cacheItem);
+
+                return new DataCacheItemVersion(cacheItemVersion);
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.KEY_ALREADY_EXISTS)
+                    {
+                        throw new DataCacheException("Key already exists.")
+                        {
+                            ErrorCode = DataCacheErrorCode.KeyAlreadyExists
+                        };
+                    }
+                    else
+                    {
+                        throw CommonCacheExceptions(ex);
+                    }
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+        internal DataCacheItemVersion Add(string key, object value, TimeSpan timeout, string region)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (value == null)
+                {
+                    throw new ArgumentNullException(nameof(value), "Value cannot be null.");
+                }
+
+                if (string.IsNullOrWhiteSpace(region))
+                {
+                    throw new ArgumentNullException(nameof(region), "Value cannot be null.");
+                }
+
+                if (timeout <= TimeSpan.Zero)
+                {
+                    throw new ArgumentException("Time-out should be a positive value.", nameof(timeout));
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key, region);
+
+                var cacheItem = DataFormatter.CreateCacheItem(value, null, region, _expirable, timeout);
+
+                var cacheItemVersion = _cache.Add(cacheKey, cacheItem);
+
+                return new DataCacheItemVersion(cacheItemVersion);
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.KEY_ALREADY_EXISTS)
+                    {
+                        throw new DataCacheException("Key already exists.")
+                        {
+                            ErrorCode = DataCacheErrorCode.KeyAlreadyExists
+                        };
+                    }
+                    else if (ex.ErrorCode == ErrorCodes.Common.DEPENDENCY_KEY_NOT_FOUND)
+                    {
+                        throw new DataCacheException("Region not found.")
+                        {
+                            ErrorCode = DataCacheErrorCode.RegionDoesNotExist
+                        };
+                    }
+                    else
+                    {
+                        throw CommonCacheExceptions(ex);
+                    }
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+        internal DataCacheItemVersion Add(string key, object value, TimeSpan timeout, IEnumerable<DataCacheTag> tags, string region)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (value == null)
+                {
+                    throw new ArgumentNullException(nameof(value), "Value cannot be null.");
+                }
+
+                if (string.IsNullOrWhiteSpace(region))
+                {
+                    throw new ArgumentNullException(nameof(region), "Value cannot be null.");
+                }
+
+                if (tags == null)
+                {
+                    throw new ArgumentNullException(nameof(tags), "Value cannot be null.");
+                }
+
+                if (tags.Count() == 0 || tags.Any(x => x == null))
+                {
+                    throw new ArgumentException("Either the collection passed is empty or one of the tags passed is null.", nameof(tags));
+                }
+
+                if (timeout <= TimeSpan.Zero)
+                {
+                    throw new ArgumentException("Time-out should be a positive value.", nameof(timeout));
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key, region);
+
+                var cacheItem = DataFormatter.CreateCacheItem(value, tags, region, _expirable, timeout);
+
+                var cacheItemVersion = _cache.Add(cacheKey, cacheItem);
+
+                return new DataCacheItemVersion(cacheItemVersion);
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.KEY_ALREADY_EXISTS)
+                    {
+                        throw new DataCacheException("Key already exists.")
+                        {
+                            ErrorCode = DataCacheErrorCode.KeyAlreadyExists
+                        };
+                    }
+                    else if (ex.ErrorCode == ErrorCodes.Common.DEPENDENCY_KEY_NOT_FOUND)
+                    {
+                        throw new DataCacheException("Region not found.")
+                        {
+                            ErrorCode = DataCacheErrorCode.RegionDoesNotExist
+                        };
+                    }
+                    else
+                    {
+                        throw CommonCacheExceptions(ex);
+                    }
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+
+
+
+        internal DataCacheItemVersion Put(string key, object value)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (value == null)
+                {
+                    throw new ArgumentNullException(nameof(value), "Value cannot be null.");
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key);
+
+                var cacheItem = DataFormatter.CreateCacheItem(value, null, null, _expirable, _defaultTimeout);
+
+                var cacheItemVersion = _cache.Insert(cacheKey, cacheItem);
+
+                return new DataCacheItemVersion(cacheItemVersion);
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    throw CommonCacheExceptions(ex);
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+        internal DataCacheItemVersion Put(string key, object value, DataCacheItemVersion version)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (value == null)
+                {
+                    throw new ArgumentNullException(nameof(value), "Value cannot be null.");
+                }
+
+                if (version == null)
+                {
+                    throw new ArgumentNullException(nameof(version), "Value cannot be null.");
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key);
+
+                var cacheItem = DataFormatter.CreateCacheItem(value, null, null, _expirable, _defaultTimeout);
+
+                cacheItem.Version = version.itemVersion;
+
+                var updatedItemVersion = _cache.Insert(cacheKey, cacheItem);
+
+                return new DataCacheItemVersion(updatedItemVersion);
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_WITH_VERSION_DOESNT_EXIST)
+                    {
+                        throw new DataCacheException("Invalid item version")
+                        {
+                            ErrorCode = DataCacheErrorCode.CacheItemVersionMismatch
+                        };
+                    }
+                    else
+                    {
+                        throw CommonCacheExceptions(ex);
+                    }
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+        internal DataCacheItemVersion Put(string key, object value, IEnumerable<DataCacheTag> tags)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (value == null)
+                {
+                    throw new ArgumentNullException(nameof(value), "Value cannot be null.");
+                }
+
+                if (tags == null)
+                {
+                    throw new ArgumentNullException(nameof(tags), "Value cannot be null.");
+                }
+
+                if (tags.Count() == 0 || tags.Any(x => x == null))
+                {
+                    throw new ArgumentException("Either the collection passed is empty or one of the tags passed is null.", nameof(tags));
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key);
+
+                var cacheItem = DataFormatter.CreateCacheItem(value, tags, null, _expirable, _defaultTimeout);
+
+                var cacheItemVersion = _cache.Insert(cacheKey, cacheItem);
+
+                return new DataCacheItemVersion(cacheItemVersion);
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    throw CommonCacheExceptions(ex);
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+        internal DataCacheItemVersion Put(string key, object value, string region)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (value == null)
+                {
+                    throw new ArgumentNullException(nameof(value), "Value cannot be null.");
+                }
+
+                if (string.IsNullOrWhiteSpace(region))
+                {
+                    throw new ArgumentNullException(nameof(region), "Value cannot be null.");
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key, region);
+
+                var cacheItem = DataFormatter.CreateCacheItem(value, null, region, _expirable, _defaultTimeout);
+
+                var updatedItemVersion = _cache.Insert(cacheKey, cacheItem);
+
+                return new DataCacheItemVersion(updatedItemVersion);
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    if (ex.ErrorCode == ErrorCodes.Common.DEPENDENCY_KEY_NOT_FOUND)
+                    {
+                        throw new DataCacheException("Region not found in cache.", ex)
+                        {
+                            ErrorCode = DataCacheErrorCode.RegionDoesNotExist
+                        };
+                    }
+                    else
+                    {
+                        throw CommonCacheExceptions(ex);
+                    }
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+        internal DataCacheItemVersion Put(string key, object value, TimeSpan timeout)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (value == null)
+                {
+                    throw new ArgumentNullException(nameof(value), "Value cannot be null.");
+                }
+
+                if (timeout <= TimeSpan.Zero)
+                {
+                    throw new ArgumentException("Time-out should be a positive value.", nameof(timeout));
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key);
+
+                var cacheItem = DataFormatter.CreateCacheItem(value, null, null, _expirable, timeout);
+
+                var cacheItemVersion = _cache.Insert(cacheKey, cacheItem);
+
+                return new DataCacheItemVersion(cacheItemVersion);
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    throw CommonCacheExceptions(ex);
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+        internal DataCacheItemVersion Put(string key, object value, DataCacheItemVersion version, IEnumerable<DataCacheTag> tags)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (value == null)
+                {
+                    throw new ArgumentNullException(nameof(value), "Value cannot be null.");
+                }
+
+                if (version == null)
+                {
+                    throw new ArgumentNullException(nameof(version), "Value cannot be null.");
+                }
+
+                if (tags == null)
+                {
+                    throw new ArgumentNullException(nameof(tags), "Value cannot be null.");
+                }
+
+                if (tags.Count() == 0 || tags.Any(x => x == null))
+                {
+                    throw new ArgumentException("Either the collection passed is empty or one of the tags passed is null.", nameof(tags));
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key);
+
+                var cacheItem = DataFormatter.CreateCacheItem(value, tags, null, _expirable, _defaultTimeout);
+
+                cacheItem.Version = version.itemVersion;
+
+                var updatedItemVersion = _cache.Insert(cacheKey, cacheItem);
+
+                return new DataCacheItemVersion(updatedItemVersion);
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_WITH_VERSION_DOESNT_EXIST)
+                    {
+                        throw new DataCacheException("Invalid item version")
+                        {
+                            ErrorCode = DataCacheErrorCode.CacheItemVersionMismatch
+                        };
+                    }
+                    else
+                    {
+                        throw CommonCacheExceptions(ex);
+                    }
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+        internal DataCacheItemVersion Put(string key, object value, DataCacheItemVersion version, string region)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (value == null)
+                {
+                    throw new ArgumentNullException(nameof(value), "Value cannot be null.");
+                }
+
+                if (string.IsNullOrWhiteSpace(region))
+                {
+                    throw new ArgumentNullException(nameof(region), "Value cannot be null.");
+                }
+
+                if (version == null)
+                {
+                    throw new ArgumentNullException(nameof(version), "Value cannot be null.");
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key, region);
+
+                var cacheItem = DataFormatter.CreateCacheItem(value, null, region, _expirable, _defaultTimeout);
+                cacheItem.Version = version.itemVersion;
+
+                var updatedItemVersion = _cache.Insert(cacheKey, cacheItem);
+
+                return new DataCacheItemVersion(updatedItemVersion);
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_WITH_VERSION_DOESNT_EXIST)
+                    {
+                        throw new DataCacheException("Invalid item version")
+                        {
+                            ErrorCode = DataCacheErrorCode.CacheItemVersionMismatch
+                        };
+                    }
+                    else if (ex.ErrorCode == ErrorCodes.Common.DEPENDENCY_KEY_NOT_FOUND)
+                    {
+                        throw new DataCacheException("Region not found in cache.", ex)
+                        {
+                            ErrorCode = DataCacheErrorCode.RegionDoesNotExist
+                        };
+                    }
+                    else
+                    {
+                        throw CommonCacheExceptions(ex);
+                    }
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+        internal DataCacheItemVersion Put(string key, object value, DataCacheItemVersion version, TimeSpan timeout)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (value == null)
+                {
+                    throw new ArgumentNullException(nameof(value), "Value cannot be null.");
+                }
+
+                if (version == null)
+                {
+                    throw new ArgumentNullException(nameof(version), "Value cannot be null.");
+                }
+
+                if (timeout <= TimeSpan.Zero)
+                {
+                    throw new ArgumentException("Time-out should be a positive value.", nameof(timeout));
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key);
+
+                var cacheItem = DataFormatter.CreateCacheItem(value, null, null, _expirable, timeout);
+
+                cacheItem.Version = version.itemVersion;
+
+                var updatedItemVersion = _cache.Insert(cacheKey, cacheItem);
+
+                return new DataCacheItemVersion(updatedItemVersion);
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_WITH_VERSION_DOESNT_EXIST)
+                    {
+                        throw new DataCacheException("Invalid item version")
+                        {
+                            ErrorCode = DataCacheErrorCode.CacheItemVersionMismatch
+                        };
+                    }
+                    else
+                    {
+                        throw CommonCacheExceptions(ex);
+                    }
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+        internal DataCacheItemVersion Put(string key, object value, IEnumerable<DataCacheTag> tags, string region)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (value == null)
+                {
+                    throw new ArgumentNullException(nameof(value), "Value cannot be null.");
+                }
+
+                if (string.IsNullOrWhiteSpace(region))
+                {
+                    throw new ArgumentNullException(nameof(region), "Value cannot be null.");
+                }
+
+                if (tags == null)
+                {
+                    throw new ArgumentNullException(nameof(tags), "Value cannot be null.");
+                }
+
+                if (tags.Count() == 0 || tags.Any(x => x == null))
+                {
+                    throw new ArgumentException("Either the collection passed is empty or one of the tags passed is null.", nameof(tags));
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key, region);
+
+                var cacheItem = DataFormatter.CreateCacheItem(value, tags, region, _expirable, _defaultTimeout);
+
+                var updatedItemVersion = _cache.Insert(cacheKey, cacheItem);
+
+                return new DataCacheItemVersion(updatedItemVersion);
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    if (ex.ErrorCode == ErrorCodes.Common.DEPENDENCY_KEY_NOT_FOUND)
+                    {
+                        throw new DataCacheException("Region not found in cache.", ex)
+                        {
+                            ErrorCode = DataCacheErrorCode.RegionDoesNotExist
+                        };
+                    }
+                    else
+                    {
+                        throw CommonCacheExceptions(ex);
+                    }
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+        internal DataCacheItemVersion Put(string key, object value, TimeSpan timeout, IEnumerable<DataCacheTag> tags)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (value == null)
+                {
+                    throw new ArgumentNullException(nameof(value), "Value cannot be null.");
+                }
+
+                if (tags == null)
+                {
+                    throw new ArgumentNullException(nameof(tags), "Value cannot be null.");
+                }
+
+                if (tags.Count() == 0 || tags.Any(x => x == null))
+                {
+                    throw new ArgumentException("Either the collection passed is empty or one of the tags passed is null.", nameof(tags));
+                }
+
+                if (timeout <= TimeSpan.Zero)
+                {
+                    throw new ArgumentException("Time-out should be a positive value.", nameof(timeout));
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key);
+
+                var cacheItem = DataFormatter.CreateCacheItem(value, tags, null, _expirable, timeout);
+
+                var cacheItemVersion = _cache.Insert(cacheKey, cacheItem);
+
+                return new DataCacheItemVersion(cacheItemVersion);
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    throw CommonCacheExceptions(ex);
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+        internal DataCacheItemVersion Put(string key, object value, TimeSpan timeout, string region)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (value == null)
+                {
+                    throw new ArgumentNullException(nameof(value), "Value cannot be null.");
+                }
+
+                if (string.IsNullOrWhiteSpace(region))
+                {
+                    throw new ArgumentNullException(nameof(region), "Value cannot be null.");
+                }
+
+                if (timeout <= TimeSpan.Zero)
+                {
+                    throw new ArgumentException("Time-out should be a positive value.", nameof(timeout));
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key, region);
+
+                var cacheItem = DataFormatter.CreateCacheItem(value, null, region, _expirable, timeout);
+
+                var updatedItemVersion = _cache.Insert(cacheKey, cacheItem);
+
+                return new DataCacheItemVersion(updatedItemVersion);
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    if (ex.ErrorCode == ErrorCodes.Common.DEPENDENCY_KEY_NOT_FOUND)
+                    {
+                        throw new DataCacheException("Region not found in cache.", ex)
+                        {
+                            ErrorCode = DataCacheErrorCode.RegionDoesNotExist
+                        };
+                    }
+                    else
+                    {
+                        throw CommonCacheExceptions(ex);
+                    }
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+        internal DataCacheItemVersion Put(string key, object value, DataCacheItemVersion version, IEnumerable<DataCacheTag> tags, string region)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (value == null)
+                {
+                    throw new ArgumentNullException(nameof(value), "Value cannot be null.");
+                }
+
+                if (string.IsNullOrWhiteSpace(region))
+                {
+                    throw new ArgumentNullException(nameof(region), "Value cannot be null.");
+                }
+
+                if (version == null)
+                {
+                    throw new ArgumentNullException(nameof(version), "Value cannot be null.");
+                }
+
+                if (tags == null)
+                {
+                    throw new ArgumentNullException(nameof(tags), "Value cannot be null.");
+                }
+
+                if (tags.Count() == 0 || tags.Any(x => x == null))
+                {
+                    throw new ArgumentException("Either the collection passed is empty or one of the tags passed is null.", nameof(tags));
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key, region);
+
+                var cacheItem = DataFormatter.CreateCacheItem(value, tags, region, _expirable, _defaultTimeout);
+                cacheItem.Version = version.itemVersion;
+
+                var updatedItemVersion = _cache.Insert(cacheKey, cacheItem);
+
+                return new DataCacheItemVersion(updatedItemVersion);
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_WITH_VERSION_DOESNT_EXIST)
+                    {
+                        throw new DataCacheException("Invalid item version")
+                        {
+                            ErrorCode = DataCacheErrorCode.CacheItemVersionMismatch
+                        };
+                    }
+                    else if (ex.ErrorCode == ErrorCodes.Common.DEPENDENCY_KEY_NOT_FOUND)
+                    {
+                        throw new DataCacheException("Region not found in cache.", ex)
+                        {
+                            ErrorCode = DataCacheErrorCode.RegionDoesNotExist
+                        };
+                    }
+                    else
+                    {
+                        throw CommonCacheExceptions(ex);
+                    }
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+        internal DataCacheItemVersion Put(string key, object value, DataCacheItemVersion version, TimeSpan timeout, IEnumerable<DataCacheTag> tags)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (value == null)
+                {
+                    throw new ArgumentNullException(nameof(value), "Value cannot be null.");
+                }
+
+                if (version == null)
+                {
+                    throw new ArgumentNullException(nameof(version), "Value cannot be null.");
+                }
+
+                if (tags == null)
+                {
+                    throw new ArgumentNullException(nameof(tags), "Value cannot be null.");
+                }
+
+                if (tags.Count() == 0 || tags.Any(x => x == null))
+                {
+                    throw new ArgumentException("Either the collection passed is empty or one of the tags passed is null.", nameof(tags));
+                }
+
+                if (timeout <= TimeSpan.Zero)
+                {
+                    throw new ArgumentException("Time-out should be a positive value.", nameof(timeout));
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key);
+
+                var cacheItem = DataFormatter.CreateCacheItem(value, tags, null, _expirable, timeout);
+
+                cacheItem.Version = version.itemVersion;
+
+                var updatedItemVersion = _cache.Insert(cacheKey, cacheItem);
+
+                return new DataCacheItemVersion(updatedItemVersion);
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_WITH_VERSION_DOESNT_EXIST)
+                    {
+                        throw new DataCacheException("Invalid item version")
+                        {
+                            ErrorCode = DataCacheErrorCode.CacheItemVersionMismatch
+                        };
+                    }
+                    else
+                    {
+                        throw CommonCacheExceptions(ex);
+                    }
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+        internal DataCacheItemVersion Put(string key, object value, DataCacheItemVersion version, TimeSpan timeout, string region)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (value == null)
+                {
+                    throw new ArgumentNullException(nameof(value), "Value cannot be null.");
+                }
+
+                if (string.IsNullOrWhiteSpace(region))
+                {
+                    throw new ArgumentNullException(nameof(region), "Value cannot be null.");
+                }
+
+                if (version == null)
+                {
+                    throw new ArgumentNullException(nameof(version), "Value cannot be null.");
+                }
+
+                if (timeout <= TimeSpan.Zero)
+                {
+                    throw new ArgumentException("Time-out should be a positive value.", nameof(timeout));
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key, region);
+
+                var cacheItem = DataFormatter.CreateCacheItem(value, null, region, _expirable, timeout);
+                cacheItem.Version = version.itemVersion;
+
+                var updatedItemVersion = _cache.Insert(cacheKey, cacheItem);
+
+                return new DataCacheItemVersion(updatedItemVersion);
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_WITH_VERSION_DOESNT_EXIST)
+                    {
+                        throw new DataCacheException("Invalid item version")
+                        {
+                            ErrorCode = DataCacheErrorCode.CacheItemVersionMismatch
+                        };
+                    }
+                    else if (ex.ErrorCode == ErrorCodes.Common.DEPENDENCY_KEY_NOT_FOUND)
+                    {
+                        throw new DataCacheException("Region not found in cache.", ex)
+                        {
+                            ErrorCode = DataCacheErrorCode.RegionDoesNotExist
+                        };
+                    }
+                    else
+                    {
+                        throw CommonCacheExceptions(ex);
+                    }
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+        internal DataCacheItemVersion Put(string key, object value, TimeSpan timeout, IEnumerable<DataCacheTag> tags, string region)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (value == null)
+                {
+                    throw new ArgumentNullException(nameof(value), "Value cannot be null.");
+                }
+
+                if (string.IsNullOrWhiteSpace(region))
+                {
+                    throw new ArgumentNullException(nameof(region), "Value cannot be null.");
+                }
+
+                if (tags == null)
+                {
+                    throw new ArgumentNullException(nameof(tags), "Value cannot be null.");
+                }
+
+                if (tags.Count() == 0 || tags.Any(x => x == null))
+                {
+                    throw new ArgumentException("Either the collection passed is empty or one of the tags passed is null.", nameof(tags));
+                }
+
+                if (timeout <= TimeSpan.Zero)
+                {
+                    throw new ArgumentException("Time-out should be a positive value.", nameof(timeout));
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key, region);
+
+                var cacheItem = DataFormatter.CreateCacheItem(value, tags, region, _expirable, timeout);
+
+                var updatedItemVersion = _cache.Insert(cacheKey, cacheItem);
+
+                return new DataCacheItemVersion(updatedItemVersion);
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    if (ex.ErrorCode == ErrorCodes.Common.DEPENDENCY_KEY_NOT_FOUND)
+                    {
+                        throw new DataCacheException("Region not found in cache.", ex)
+                        {
+                            ErrorCode = DataCacheErrorCode.RegionDoesNotExist
+                        };
+                    }
+                    else
+                    {
+                        throw CommonCacheExceptions(ex);
+                    }
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+        internal DataCacheItemVersion Put(string key, object value, DataCacheItemVersion version, TimeSpan timeout, IEnumerable<DataCacheTag> tags, string region)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (value == null)
+                {
+                    throw new ArgumentNullException(nameof(value), "Value cannot be null.");
+                }
+
+                if (string.IsNullOrWhiteSpace(region))
+                {
+                    throw new ArgumentNullException(nameof(region), "Value cannot be null.");
+                }
+
+                if (version == null)
+                {
+                    throw new ArgumentNullException(nameof(version), "Value cannot be null.");
+                }
+
+                if (tags == null)
+                {
+                    throw new ArgumentNullException(nameof(tags), "Value cannot be null.");
+                }
+
+                if (tags.Count() == 0 || tags.Any(x => x == null))
+                {
+                    throw new ArgumentException("Either the collection passed is empty or one of the tags passed is null.", nameof(tags));
+                }
+
+                if (timeout <= TimeSpan.Zero)
+                {
+                    throw new ArgumentException("Time-out should be a positive value.", nameof(timeout));
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key, region);
+
+                var cacheItem = DataFormatter.CreateCacheItem(value, tags, region, _expirable, timeout);
+                cacheItem.Version = version.itemVersion;
+
+                var updatedItemVersion = _cache.Insert(cacheKey, cacheItem);
+
+                return new DataCacheItemVersion(updatedItemVersion);
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_WITH_VERSION_DOESNT_EXIST)
+                    {
+                        throw new DataCacheException("Invalid item version")
+                        {
+                            ErrorCode = DataCacheErrorCode.CacheItemVersionMismatch
+                        };
+                    }
+                    else if (ex.ErrorCode == ErrorCodes.Common.DEPENDENCY_KEY_NOT_FOUND)
+                    {
+                        throw new DataCacheException("Region not found in cache.", ex)
+                        {
+                            ErrorCode = DataCacheErrorCode.RegionDoesNotExist
+                        };
+                    }
+                    else
+                    {
+                        throw CommonCacheExceptions(ex);
+                    }
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+
+
+        internal bool Remove(string key)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key);
+
+                var result = _cache.Remove(cacheKey, out object removedItem);
+
+                return removedItem != null;
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    throw CommonCacheExceptions(ex);
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+        internal bool Remove(string key, DataCacheItemVersion version)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (version == null)
+                {
+                    throw new ArgumentNullException(nameof(version), "Value cannot be null.");
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key);
+                var result = _cache.Remove(cacheKey, out object removedItem, null, version.itemVersion, null);
+
+                return removedItem != null;
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_WITH_VERSION_DOESNT_EXIST)
+                    {
+                        return false;
+                    }
+                    else
+                    {
+                        throw CommonCacheExceptions(ex);
+                    }
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+        internal bool Remove(string key, DataCacheLockHandle lockHandle)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (lockHandle == null)
+                {
+                    throw new ArgumentNullException(nameof(lockHandle), "Value cannot be null.");
+                }
+
+                var cacheLockHandle = lockHandle.LockHandle;
+
+                var cacheKey = DataFormatter.MarshalKey(key);
+                var result = _cache.Remove(cacheKey, out object removedItem, lockHandle.LockHandle, null, null);
+
+                return removedItem != null;
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_LOCKED)
+                    {
+                        return false;
+                    }
+                    else
+                    {
+                        throw CommonCacheExceptions(ex);
+                    }
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+        internal bool Remove(string key, string region)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (string.IsNullOrWhiteSpace(region))
+                {
+                    throw new ArgumentNullException(nameof(region), "Value cannot be null.");
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key, region);
+
+                var result = _cache.Remove(cacheKey, out object removedItem);
+
+                return removedItem != null;
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    throw CommonCacheExceptions(ex);
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+        internal bool Remove(string key, DataCacheItemVersion version, string region)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (string.IsNullOrWhiteSpace(region))
+                {
+                    throw new ArgumentNullException(nameof(region), "Value cannot be null.");
+                }
+
+                if (version == null)
+                {
+                    throw new ArgumentNullException(nameof(version), "Value cannot be null.");
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key, region);
+                var result = _cache.Remove(cacheKey, out object removedItem, null, version.itemVersion, null);
+
+                return removedItem != null;
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_WITH_VERSION_DOESNT_EXIST)
+                    {
+                        return false;
+                    }
+                    else
+                    {
+                        throw CommonCacheExceptions(ex);
+                    }
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+        internal bool Remove(string key, DataCacheLockHandle lockHandle, string region)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (lockHandle == null)
+                {
+                    throw new ArgumentNullException(nameof(lockHandle), "Value cannot be null.");
+                }
+
+                if (string.IsNullOrWhiteSpace(region))
+                {
+                    throw new ArgumentNullException(nameof(region), "Value cannot be null.");
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key, region);
+
+                var result = _cache.Remove(cacheKey, out object removedItem, lockHandle.LockHandle, null, null);
+
+                return removedItem != null;
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_LOCKED)
+                    {
+                        return false;
+                    }
+                    else
+                    {
+                        throw CommonCacheExceptions(ex);
+                    }
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+
+        internal IEnumerable<KeyValuePair<string, object>> GetObjectsByTag(DataCacheTag tag, string region)
+        {
+            try
+            {
+                if (tag == null)
+                {
+                    throw new ArgumentNullException(nameof(tag), "Value cannot be null.");
+                }
+
+                if (string.IsNullOrWhiteSpace(region))
+                {
+                    throw new ArgumentNullException(nameof(region), "Value cannot be null.");
+                }
+
+                var objectsByTag = _cache.SearchService.GetByTag<object>(DataFormatter.MarshalTag(tag, region));
+
+                if (objectsByTag == null || objectsByTag.Count == 0)
+                {
+                    return new List<KeyValuePair<string, object>>();
+                }
+
+                var result = new List<KeyValuePair<string, object>>(objectsByTag.Count());
+
+                string key;
+                foreach (var entry in objectsByTag)
+                {
+                    key = DataFormatter.UnMarshalKey(entry.Key);
+                    result.Add(new KeyValuePair<string, object>(key, entry.Value));
+                }
+
+                return result;
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    throw CommonCacheExceptions(ex);
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
         internal IEnumerable<KeyValuePair<string, object>> GetObjectsByAnyTag(IEnumerable<DataCacheTag> tags, string region)
         {
-            Hashtable _resultSet = new Hashtable();
-            Tag[] nTags = _formatter.MarshalTags(tags, region);
-            
-            _resultSet = _NCache.GetByAnyTag(nTags);
-
-            if (_resultSet != null)
+            try
             {
-                foreach (DictionaryEntry entry in _resultSet)
+
+                if (tags == null)
                 {
-                    object _item = (object)entry.Value;
-                    yield return new KeyValuePair<string, object>(_formatter.UnMarshalKey((string)entry.Key), _item);
+                    throw new ArgumentNullException(nameof(tags), "Value cannot be null.");
+                }
+
+                if (tags.Count() == 0 || tags.Any(x => x == null))
+                {
+                    throw new ArgumentException("Either the collection passed is empty or one of the tags passed is null.", nameof(tags));
+                }
+
+                if (string.IsNullOrWhiteSpace(region))
+                {
+                    throw new ArgumentNullException(nameof(region), "Value cannot be null.");
+                }
+
+                var objectsByTag = _cache.SearchService.GetByTags<object>(DataFormatter.MarshalTags(tags, region, false), TagSearchOptions.ByAnyTag);
+
+
+                if (objectsByTag == null || objectsByTag.Count == 0)
+                {
+                    return new List<KeyValuePair<string, object>>();
+                }
+
+                var result = new List<KeyValuePair<string, object>>(objectsByTag.Count());
+
+                string key;
+                foreach (var entry in objectsByTag)
+                {
+                    key = DataFormatter.UnMarshalKey(entry.Key);
+                    result.Add(new KeyValuePair<string, object>(key, entry.Value));
+                }
+
+                return result;
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    throw CommonCacheExceptions(ex);
+                }
+                else
+                {
+                    throw e;
                 }
             }
         }
 
         internal IEnumerable<KeyValuePair<string, object>> GetObjectsByAllTags(IEnumerable<DataCacheTag> tags, string region)
         {
-            Hashtable _resultSet = new Hashtable();
-            Tag[] nTags = _formatter.MarshalTags(tags, region);
-
-            _resultSet = _NCache.GetByAllTags(nTags);
-
-            if (_resultSet != null)
+            try
             {
-                foreach (DictionaryEntry entry in _resultSet)
+                if (tags == null)
                 {
-                    object _item = (object)entry.Value;
-                    yield return new KeyValuePair<string, object>(_formatter.UnMarshalKey((string)entry.Key), _item);
+                    throw new ArgumentNullException(nameof(tags), "Value cannot be null.");
+                }
+
+                if (tags.Count() == 0 || tags.Any(x => x == null))
+                {
+                    throw new ArgumentException("Either the collection passed is empty or one of the tags passed is null.", nameof(tags));
+                }
+
+                if (string.IsNullOrWhiteSpace(region))
+                {
+                    throw new ArgumentNullException(nameof(region), "Value cannot be null.");
+                }
+
+                var objectsByTag = _cache.SearchService.GetByTags<object>(DataFormatter.MarshalTags(tags, region, false), TagSearchOptions.ByAllTags);
+
+                if (objectsByTag == null || objectsByTag.Count == 0)
+                {
+                    return new List<KeyValuePair<string, object>>();
+                }
+
+                var result = new List<KeyValuePair<string, object>>(objectsByTag.Count());
+
+                string key;
+                foreach (var entry in objectsByTag)
+                {
+                    key = DataFormatter.UnMarshalKey(entry.Key);
+                    result.Add(new KeyValuePair<string, object>(key, entry.Value));
+                }
+
+                return result;
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    throw CommonCacheExceptions(ex);
+                }
+                else
+                {
+                    throw e;
                 }
             }
         }
-        
-        internal IEnumerable<KeyValuePair<string, object>> GetObjectsInRegion(string region) 
-        {
-            IDictionary getByTagResult = _NCache.GetGroupData(region,null);
-            if (getByTagResult != null)
-            {
-                foreach (DictionaryEntry entry in getByTagResult)
-                {
-                    object _item = (object)entry.Value;
-                    yield return new KeyValuePair<string, object>(_formatter.UnMarshalKey((string)entry.Key), _item);
-                }
-            }
-        }
 
-        internal object GetLock(string key, TimeSpan timeOut, out DataCacheLockHandle appLockHandle, string region, bool forceLock)
+        internal IEnumerable<KeyValuePair<string, object>> GetObjectsInRegion(string region)
         {
-            appLockHandle = new DataCacheLockHandle();
-            object obj;
-            LockHandle lockHandle = _formatter.ConvertToNCacheLockHandle(appLockHandle);
             try
             {
                 if (string.IsNullOrWhiteSpace(region))
                 {
-                    key = _formatter.MarshalKey(key, null);
+                    throw new ArgumentNullException(nameof(region), "Value cannot be null.");
                 }
-                else
+
+                var regionTag = DataFormatter.MarshalRegionTag(region);
+
+                var objectsByTag = _cache.SearchService.GetByTag<object>(regionTag);
+
+                if (objectsByTag == null || objectsByTag.Count() == 0)
                 {
-                    key = _formatter.MarshalKey(key, region);
+                    return new List<KeyValuePair<string, object>>();
                 }
-                object cacheGetAndLockResult = _NCache.Get(key, timeOut, ref lockHandle, true);
-                if (cacheGetAndLockResult == null)
+
+                var result = new List<KeyValuePair<string, object>>(objectsByTag.Count());
+
+                string key;
+                foreach (var entry in objectsByTag)
                 {
-                    obj = _NCache.Get(key, timeOut, ref lockHandle, true);
+                    key = DataFormatter.UnMarshalKey(entry.Key);
+                    result.Add(new KeyValuePair<string, object>(key, entry.Value));
                 }
-                else
-                {
-                    obj = cacheGetAndLockResult;
-                }
-                return obj;
+
+                return result;
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                throw ex;
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    throw CommonCacheExceptions(ex);
+                }
+                else
+                {
+                    throw e;
+                }
             }
         }
-        
-        internal DataCacheItem GetCacheItem(string key, string region,string CacheName)
+
+
+
+
+
+        internal IEnumerable<KeyValuePair<string, object>> BulkGet(IEnumerable<string> keys)
         {
             try
             {
-                string _key;
-                DataCacheItem _dataCacheItem;
-                if (string.IsNullOrWhiteSpace(region))
+                if (keys == null)
                 {
-                    _key = _formatter.MarshalKey(key, null);
+                    throw new ArgumentNullException(nameof(keys), "Value cannot be null.");
+                }
+
+                if (keys.Any(x => x == null))
+                {
+                    throw new ArgumentException("A key is passed with value null.", nameof(keys));
+                }
+
+                if (keys.Count() == 0)
+                {
+                    return new List<KeyValuePair<string, object>>();
+                }
+
+                var cacheKeys = keys.Select(x => DataFormatter.MarshalKey(x));
+                var cachedDict = _cache.GetBulk<object>(cacheKeys);
+
+                var result = new List<KeyValuePair<string, object>>(cachedDict.Count);
+
+                string key;
+                foreach (var entry in cachedDict)
+                {
+                    key = DataFormatter.UnMarshalKey(entry.Key);
+                    result.Add(new KeyValuePair<string, object>(key, entry.Value));
+                }
+
+                return result;
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    throw CommonCacheExceptions(ex);
                 }
                 else
                 {
-                    _key = _formatter.MarshalKey(key, region);
+                    throw e;
                 }
-                _dataCacheItem = _formatter.ConvertToDataCacheItem(_NCache.GetCacheItem(_key));
-                _dataCacheItem.Key = key;
-                _dataCacheItem.CacheName = CacheName;
+            }
+        }
 
-                return _dataCacheItem;
-            }
-            catch (Exception exp)
+        internal IEnumerable<KeyValuePair<string, object>> BulkGet(IEnumerable<string> keys, string region)
+        {
+            try
             {
-                throw exp;
+                if (keys == null)
+                {
+                    throw new ArgumentNullException(nameof(keys), "Value cannot be null.");
+                }
+
+                if (keys.Any(x => x == null))
+                {
+                    throw new ArgumentException("A key is passed with value null.", nameof(keys));
+                }
+
+                if (string.IsNullOrWhiteSpace(region))
+                {
+                    throw new ArgumentNullException(nameof(region), "Value cannot be null.");
+                }
+
+                if (keys.Count() == 0)
+                {
+                    return new List<KeyValuePair<string, object>>();
+                }
+
+                var cacheKeys = keys.Select(x => DataFormatter.MarshalKey(x, region));
+
+                var cachedDict = _cache.GetBulk<object>(cacheKeys);
+
+                if (cachedDict == null || cachedDict.Count() == 0)
+                {
+                    return new List<KeyValuePair<string, object>>();
+                }
+
+
+                var result = new List<KeyValuePair<string, object>>(cachedDict.Count());
+
+                string key;
+                foreach (var entry in cachedDict)
+                {
+                    key = DataFormatter.UnMarshalKey(entry.Key);
+                    result.Add(new KeyValuePair<string, object>(key, entry.Value));
+                }
+
+                return result;
             }
-        }        
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    throw CommonCacheExceptions(ex);
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+
+
+
+        internal DataCacheItem GetCacheItem(string key)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key);
+
+                var cacheItem = _cache.GetCacheItem(cacheKey);
+
+                if (cacheItem == null)
+                {
+                    return null;
+                }
+
+                return DataFormatter.ConvertToDataCacheItem(key, _cacheName, cacheItem);
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    throw CommonCacheExceptions(ex);
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+        internal DataCacheItem GetCacheItem(string key, string region)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (string.IsNullOrWhiteSpace(region))
+                {
+                    throw new ArgumentNullException(nameof(region), "Value cannot be null.");
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key, region);
+
+                var cacheItem = _cache.GetCacheItem(cacheKey);
+
+                if (cacheItem == null)
+                {
+                    return null;
+                }
+
+                return DataFormatter.ConvertToDataCacheItem(key, _cacheName, cacheItem);
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    throw CommonCacheExceptions(ex);
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+
+
+
+        internal object GetIfNewer(string key, ref DataCacheItemVersion version)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (version == null)
+                {
+                    throw new ArgumentNullException(nameof(version), "Value cannot be null.");
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key);
+
+                var cacheItemVersion = version.itemVersion;
+
+
+                return _cache.GetIfNewer<object>(cacheKey, ref cacheItemVersion);
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    throw CommonCacheExceptions(ex);
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
         internal object GetIfNewer(string key, ref DataCacheItemVersion version, string region)
         {
-            
-            string _key = _formatter.MarshalKey(key,region);
-            CacheItemVersion nVersion = _formatter.ConvertToNCacheVersion(version);
-            object obj = _NCache.GetIfNewer(_key, null, null, ref nVersion);
-
-            if (nVersion != null)
+            try
             {
-                version._itemVersion = nVersion;
-            }
-            return obj;
-       
-        }
-       
-        internal string GetSystemRegionName(string key)
-        {
-            string _key = _formatter.MarshalKey(key);
-            CacheItem _item= _NCache.GetCacheItem(_key);
-            if (_item != null)
-            {
-                return _item.Group;
-            }
-            else
-            {
-                return null;
-            }
-        }
-        
-        internal DataCacheItemVersion Put(string key, object value, DataCacheItemVersion oldVersion, TimeSpan timeOut,
-            IEnumerable<DataCacheTag> tags, string region)
-        {
-            CacheItem _item=_formatter.CreateCacheItem(value, tags, region, timeOut);
-            if (oldVersion != null)
-            {
-                _item.Version = oldVersion._itemVersion;
-            }
-            string _key;
-
-            if (string.IsNullOrWhiteSpace(region))
-            {
-                _key = _formatter.MarshalKey(key, null);
-            }
-            else
-            {
-                _key = _formatter.MarshalKey(key, region);
-            }
-#if PROFESSIONAL                    
-                  
-#else
-            CacheItemVersion _version = _NCache.Insert(_key,_item);
-            return _formatter.ConvertToAPVersion(_version);
-#endif
-        }
-
-        internal DataCacheItemVersion PutAndUnlock(string key, object value, DataCacheLockHandle lockHandle, TimeSpan timeOut,
-            IEnumerable<DataCacheTag> tags, string region)
-        {
-            CacheItem _item = _formatter.CreateCacheItem(value, tags, region, timeOut);
-            string _key;
-            if (string.IsNullOrWhiteSpace(region))
-            {
-                _key = _formatter.MarshalKey(key);
-            }
-            else
-                _key = _formatter.MarshalKey(key, region);
-
-            LockHandle nLockHandle = _formatter.ConvertToNCacheLockHandle(lockHandle);
-            CacheItemVersion _ver = _NCache.Insert(_key, _item, nLockHandle, true);
-            return _formatter.ConvertToAPVersion(_ver);
-        }
-
-        internal bool Remove(string key, DataCacheLockHandle lockHandle, string region, DataCacheItemVersion version,RemoveOperation opCode)
-        {
-            if (String.IsNullOrWhiteSpace(region))
-            {
-                key = _formatter.MarshalKey(key);
-            }
-            else
-            {
-                key = _formatter.MarshalKey(key, region);
-            }
-            
-            if (opCode== RemoveOperation.LockBased)
-            {
-                LockHandle nLockHandle = _formatter.ConvertToNCacheLockHandle(lockHandle);
-                if (_NCache.Remove(key, nLockHandle) != null)
+                if (string.IsNullOrWhiteSpace(key))
                 {
-                    return true;
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (string.IsNullOrWhiteSpace(region))
+                {
+                    throw new ArgumentNullException(nameof(region), "Value cannot be null.");
+                }
+
+                if (version == null)
+                {
+                    throw new ArgumentNullException(nameof(version), "Value cannot be null.");
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key, region);
+
+                var cacheItemVersion = version.itemVersion;
+
+
+                return _cache.GetIfNewer<object>(cacheKey, ref cacheItemVersion);
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    throw CommonCacheExceptions(ex);
                 }
                 else
                 {
-                    return false;
+                    throw e;
                 }
-            }
-            else if(opCode== RemoveOperation.VersionBased) 
-            {
-                CacheItemVersion itemVersion = _formatter.ConvertToNCacheVersion(version);
-                if (_NCache.Remove(key,itemVersion) != null)
-                {
-                    return true;
-                }
-                else
-                {
-                    return false;
-                }
-            }
-            else if (opCode == RemoveOperation.KeyBased)
-            {
-                if (_NCache.Remove(key) != null)
-                {
-                    return true;
-                }
-                else
-                {
-                    return false;
-                }
-            }
-            else
-            {
-                return false;
             }
         }
 
-        internal bool RemoveRegionData(string region,CallbackType opCode)
+
+
+        internal object GetAndLock(string key, TimeSpan timeout, out DataCacheLockHandle lockHandle)
         {
             try
             {
-                _NCache.RemoveGroupData(region, null);
-                if (opCode == CallbackType.ClearRegion)
+                if (string.IsNullOrWhiteSpace(key))
                 {
-                    if (_clearRegionCheck == true)
-                    {
-                        _NCache.RaiseCustomEvent(region, CallbackType.ClearRegion);
-                    }
-                }
-                else if (opCode == CallbackType.RemoveRegion)
-                {
-                    if(_removeRegionCheck == true)
-                    _NCache.RaiseCustomEvent(region, CallbackType.RemoveRegion);
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
                 }
 
-                return true;
-            }
-            catch (Exception)
-            {
-                return false;
-            }
-        }
-
-        internal bool ResetObjectTimeout(string key, TimeSpan newTimeOut, string region)
-        {
-            string _key;
-
-            if (string.IsNullOrWhiteSpace(region))
-            {
-                _key = _formatter.MarshalKey(key, null);
-            }
-            else
-            {
-                _key = _formatter.MarshalKey(key, region);
-            }
-            CacheItem _item = (CacheItem)_NCache.Get(_key);
-            if (newTimeOut != TimeSpan.Zero)
-            {
-                _item.AbsoluteExpiration = DateTime.Now.Add(newTimeOut); 
-            }
-            else
-            {
-                _item.AbsoluteExpiration = System.DateTime.Now.AddMinutes(10.0);
-            }
-            if (_NCache.Insert(_key, _item) != null)
-            {
-                return true;
-            }
-            else
-                return false;
-        }
-
-        internal bool Unlock(string key, DataCacheLockHandle appLockHandle, TimeSpan timeOut, string region)
-        {
-            appLockHandle = new DataCacheLockHandle();
-            LockHandle lockHandle = _formatter.ConvertToNCacheLockHandle(appLockHandle);
-
-            string _key;
-
-            if (string.IsNullOrWhiteSpace(region))
-            {
-                _key = _formatter.MarshalKey(key, null);
-            }
-            else
-            {
-                _key = _formatter.MarshalKey(key, region);
-            }
-
-            if (timeOut != TimeSpan.Zero)
-            {
-                CacheItem _item = (CacheItem)_NCache.Get(_key);
-                _item.AbsoluteExpiration = DateTime.Now.Add(timeOut);
-
-                if (_NCache.Insert(_key, _item, lockHandle, true) != null)
+                if (timeout <= TimeSpan.Zero)
                 {
-                    _NCache.Unlock(_key, lockHandle);
+                    throw new ArgumentException("Time-out should be a positive value.", nameof(timeout));
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key);
+
+                LockHandle cacheLockHandle = null;
+                var cacheItem = _cache.GetCacheItem(cacheKey, true, timeout, ref cacheLockHandle);
+
+                if (cacheItem != null)
+                {
+                    lockHandle = new DataCacheLockHandle(cacheLockHandle);
+
+                    return cacheItem.GetValue<object>();
                 }
                 else
-                    return false;
+                {
+                    if (cacheLockHandle.LockId != null)
+                    {
+                        throw new DataCacheException("Item locked.")
+                        {
+                            ErrorCode = DataCacheErrorCode.ObjectLocked
+                        };
+                    }
+                    else
+                    {
+                        throw new DataCacheException("Key not found.")
+                        {
+                            ErrorCode = DataCacheErrorCode.KeyDoesNotExist
+                        };
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    throw CommonCacheExceptions(ex);
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+        [Obsolete("NCache does not support locking on non-existing objects", true)]
+        internal object GetAndLock(string key, TimeSpan timeout, out DataCacheLockHandle lockHandle, bool forceLock)
+        {
+            throw new NotSupportedException();
+        }
+
+        internal object GetAndLock(string key, TimeSpan timeout, out DataCacheLockHandle lockHandle, string region)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (string.IsNullOrWhiteSpace(region))
+                {
+                    throw new ArgumentNullException(nameof(region), "Value cannot be null.");
+                }
+
+                if (timeout <= TimeSpan.Zero)
+                {
+                    throw new ArgumentException("Time-out should be a positive value.", nameof(timeout));
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key, region);
+
+                LockHandle cacheLockHandle = null;
+                var cacheItem = _cache.GetCacheItem(cacheKey, true, timeout, ref cacheLockHandle);
+
+                if (cacheItem != null)
+                {
+                    lockHandle = new DataCacheLockHandle(cacheLockHandle);
+
+                    return cacheItem.GetValue<object>();
+                }
+                else
+                {
+                    if (cacheLockHandle.LockId != null)
+                    {
+                        throw new DataCacheException("Item locked.")
+                        {
+                            ErrorCode = DataCacheErrorCode.ObjectLocked
+                        };
+                    }
+                    else
+                    {
+                        if (_cache.Contains(DataFormatter.MarshalRegionKey(region)))
+                        {
+                            throw new DataCacheException("Key not found.")
+                            {
+                                ErrorCode = DataCacheErrorCode.KeyDoesNotExist
+                            };
+                        }
+                        else
+                        {
+                            throw new DataCacheException("Region not found.")
+                            {
+                                ErrorCode = DataCacheErrorCode.RegionDoesNotExist
+                            };
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    throw CommonCacheExceptions(ex);
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+        [Obsolete("NCache does not support locking on non-existing objects", true)]
+        internal object GetAndLock(string key, TimeSpan timeout, out DataCacheLockHandle lockHandle, string region, bool forceLock)
+        {
+            throw new NotSupportedException();
+        }
+
+
+
+        internal DataCacheItemVersion PutAndUnlock(string key, object value, DataCacheLockHandle lockHandle)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (value == null)
+                {
+                    throw new ArgumentNullException(nameof(value), "Value cannot be null.");
+                }
+
+                if (lockHandle == null)
+                {
+                    throw new ArgumentNullException(nameof(lockHandle), "Value cannot be null.");
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key);
+                var cacheLockHandle = lockHandle.LockHandle;
+
+                var oldCacheItem = _cache.GetCacheItem(cacheKey, false, new TimeSpan(0, 0, 2), ref cacheLockHandle);
+
+                if (oldCacheItem != null)
+                {
+                    var cacheItem = DataFormatter.CreateCacheItem(value, null, null, _expirable, _defaultTimeout);
+                    cacheItem.Version = oldCacheItem.Version;
+
+                    var cacheItemVersion = _cache.Insert(cacheKey, cacheItem, null, cacheLockHandle, true);
+
+                    return new DataCacheItemVersion(cacheItemVersion);
+                }
+                else
+                {
+                    if (cacheLockHandle.LockId != null)
+                    {
+                        throw new DataCacheException("Invalid lock handle")
+                        {
+                            ErrorCode = DataCacheErrorCode.InvalidCacheLockHandle
+                        };
+                    }
+                    else
+                    {
+                        throw new DataCacheException("Key does not exist")
+                        {
+                            ErrorCode = DataCacheErrorCode.KeyDoesNotExist
+                        };
+                    }
+                }
+
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_LOCKED)
+                    {
+                        throw new DataCacheException("Invalid lock handle", ex)
+                        {
+                            ErrorCode = DataCacheErrorCode.InvalidCacheLockHandle
+                        };
+                    }
+                    else if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_WITH_VERSION_DOESNT_EXIST)
+                    {
+                        throw new DataCacheException("Item updated outside lock", ex)
+                        {
+                            ErrorCode = DataCacheErrorCode.ObjectNotLocked
+                        };
+                    }
+                    else
+                    {
+                        throw CommonCacheExceptions(ex);
+                    }
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+        internal DataCacheItemVersion PutAndUnlock(string key, object value, DataCacheLockHandle lockHandle, IEnumerable<DataCacheTag> tags)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (value == null)
+                {
+                    throw new ArgumentNullException(nameof(value), "Value cannot be null.");
+                }
+
+                if (lockHandle == null)
+                {
+                    throw new ArgumentNullException(nameof(lockHandle), "Value cannot be null.");
+                }
+
+                if (tags == null)
+                {
+                    throw new ArgumentNullException(nameof(tags), "Value cannot be null.");
+                }
+
+                if (tags.Count() == 0 || tags.Any(x => x == null))
+                {
+                    throw new ArgumentException("Either the collection passed is empty or one of the tags passed is null.", nameof(tags));
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key);
+                var cacheLockHandle = lockHandle.LockHandle;
+
+                var oldCacheItem = _cache.GetCacheItem(cacheKey, false, new TimeSpan(0, 0, 2), ref cacheLockHandle);
+
+                if (oldCacheItem != null)
+                {
+                    var cacheItem = DataFormatter.CreateCacheItem(value, tags, null, _expirable, _defaultTimeout);
+
+                    cacheItem.Version = oldCacheItem.Version;
+
+                    var cacheItemVersion = _cache.Insert(cacheKey, cacheItem, null, cacheLockHandle, true);
+
+                    return new DataCacheItemVersion(cacheItemVersion);
+                }
+                else
+                {
+                    if (cacheLockHandle.LockId != null)
+                    {
+                        throw new DataCacheException("Invalid lock handle")
+                        {
+                            ErrorCode = DataCacheErrorCode.InvalidCacheLockHandle
+                        };
+                    }
+                    else
+                    {
+                        throw new DataCacheException("Key does not exist")
+                        {
+                            ErrorCode = DataCacheErrorCode.KeyDoesNotExist
+                        };
+                    }
+                }
+
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_LOCKED)
+                    {
+                        throw new DataCacheException("Invalid lock handle", ex)
+                        {
+                            ErrorCode = DataCacheErrorCode.InvalidCacheLockHandle
+                        };
+                    }
+                    else if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_WITH_VERSION_DOESNT_EXIST)
+                    {
+                        throw new DataCacheException("Item updated outside lock", ex)
+                        {
+                            ErrorCode = DataCacheErrorCode.ObjectNotLocked
+                        };
+                    }
+                    else
+                    {
+                        throw CommonCacheExceptions(ex);
+                    }
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+        internal DataCacheItemVersion PutAndUnlock(string key, object value, DataCacheLockHandle lockHandle, string region)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (value == null)
+                {
+                    throw new ArgumentNullException(nameof(value), "Value cannot be null.");
+                }
+
+                if (string.IsNullOrWhiteSpace(region))
+                {
+                    throw new ArgumentNullException(nameof(region), "Value cannot be null.");
+                }
+
+                if (lockHandle == null)
+                {
+                    throw new ArgumentNullException(nameof(lockHandle), "Value cannot be null.");
+                }
+
+
+                var cacheKey = DataFormatter.MarshalKey(key, region);
+                var cacheLockHandle = lockHandle.LockHandle;
+
+                var oldCacheItem = _cache.GetCacheItem(cacheKey, false, new TimeSpan(0, 0, 2), ref cacheLockHandle);
+
+                if (oldCacheItem != null)
+                {
+                    var cacheItem = DataFormatter.CreateCacheItem(value, null, region, _expirable, _defaultTimeout);
+                    cacheItem.Version = oldCacheItem.Version;
+                    var cacheItemVersion = _cache.Insert(cacheKey, cacheItem, null, cacheLockHandle, true);
+
+                    return new DataCacheItemVersion(cacheItemVersion);
+                }
+                else
+                {
+                    if (cacheLockHandle.LockId != null)
+                    {
+                        throw new DataCacheException("Invalid lock handle")
+                        {
+                            ErrorCode = DataCacheErrorCode.InvalidCacheLockHandle
+                        };
+                    }
+                    else
+                    {
+                        if (_cache.Contains(DataFormatter.MarshalRegionKey(region)))
+                        {
+                            throw new DataCacheException("Key does not exist")
+                            {
+                                ErrorCode = DataCacheErrorCode.KeyDoesNotExist
+                            };
+                        }
+                        else
+                        {
+                            throw new DataCacheException("Region does not exist")
+                            {
+                                ErrorCode = DataCacheErrorCode.RegionDoesNotExist
+                            };
+                        }
+                    }
+                }
+
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_LOCKED)
+                    {
+                        throw new DataCacheException("Invalid lock handle", ex)
+                        {
+                            ErrorCode = DataCacheErrorCode.InvalidCacheLockHandle
+                        };
+                    }
+                    else if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_WITH_VERSION_DOESNT_EXIST)
+                    {
+                        throw new DataCacheException("Item updated outside lock", ex)
+                        {
+                            ErrorCode = DataCacheErrorCode.ObjectNotLocked
+                        };
+                    }
+                    else if (ex.ErrorCode == ErrorCodes.Common.DEPENDENCY_KEY_NOT_FOUND)
+                    {
+                        throw new DataCacheException("Region not found", ex)
+                        {
+                            ErrorCode = DataCacheErrorCode.RegionDoesNotExist
+                        };
+                    }
+                    else
+                    {
+                        throw CommonCacheExceptions(ex);
+                    }
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+        internal DataCacheItemVersion PutAndUnlock(string key, object value, DataCacheLockHandle lockHandle, TimeSpan timeout)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (value == null)
+                {
+                    throw new ArgumentNullException(nameof(value), "Value cannot be null.");
+                }
+
+                if (lockHandle == null)
+                {
+                    throw new ArgumentNullException(nameof(lockHandle), "Value cannot be null.");
+                }
+
+                if (timeout <= TimeSpan.Zero)
+                {
+                    throw new ArgumentException("Time-out should be a positive value.", nameof(timeout));
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key);
+                var cacheLockHandle = lockHandle.LockHandle;
+
+                var oldCacheItem = _cache.GetCacheItem(cacheKey, false, new TimeSpan(0, 0, 2), ref cacheLockHandle);
+
+                if (oldCacheItem != null)
+                {
+                    var cacheItem = DataFormatter.CreateCacheItem(value, null, null, _expirable, timeout);
+                    cacheItem.Version = oldCacheItem.Version;
+
+                    var cacheItemVersion = _cache.Insert(cacheKey, cacheItem, null, cacheLockHandle, true);
+
+                    return new DataCacheItemVersion(cacheItemVersion);
+                }
+                else
+                {
+                    if (cacheLockHandle.LockId != null)
+                    {
+                        throw new DataCacheException("Invalid lock handle")
+                        {
+                            ErrorCode = DataCacheErrorCode.InvalidCacheLockHandle
+                        };
+                    }
+                    else
+                    {
+                        throw new DataCacheException("Key does not exist")
+                        {
+                            ErrorCode = DataCacheErrorCode.KeyDoesNotExist
+                        };
+                    }
+                }
+
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_LOCKED)
+                    {
+                        throw new DataCacheException("Invalid lock handle", ex)
+                        {
+                            ErrorCode = DataCacheErrorCode.InvalidCacheLockHandle
+                        };
+                    }
+                    else if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_WITH_VERSION_DOESNT_EXIST)
+                    {
+                        throw new DataCacheException("Item updated outside lock", ex)
+                        {
+                            ErrorCode = DataCacheErrorCode.ObjectNotLocked
+                        };
+                    }
+                    else
+                    {
+                        throw CommonCacheExceptions(ex);
+                    }
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+        internal DataCacheItemVersion PutAndUnlock(string key, object value, DataCacheLockHandle lockHandle, IEnumerable<DataCacheTag> tags, string region)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (value == null)
+                {
+                    throw new ArgumentNullException(nameof(value), "Value cannot be null.");
+                }
+
+                if (string.IsNullOrWhiteSpace(region))
+                {
+                    throw new ArgumentNullException(nameof(region), "Value cannot be null.");
+                }
+
+                if (lockHandle == null)
+                {
+                    throw new ArgumentNullException(nameof(lockHandle), "Value cannot be null.");
+                }
+
+                if (tags == null)
+                {
+                    throw new ArgumentNullException(nameof(tags), "Value cannot be null.");
+                }
+
+                if (tags.Count() == 0 || tags.Any(x => x == null))
+                {
+                    throw new ArgumentException("Either the collection passed is empty or one of the tags passed is null.", nameof(tags));
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key, region);
+                var cacheLockHandle = lockHandle.LockHandle;
+
+                var oldCacheItem = _cache.GetCacheItem(cacheKey, false, new TimeSpan(0, 0, 2), ref cacheLockHandle);
+
+                if (oldCacheItem != null)
+                {
+                    var cacheItem = DataFormatter.CreateCacheItem(value, tags, region, _expirable, _defaultTimeout);
+                    cacheItem.Version = oldCacheItem.Version;
+
+                    var cacheItemVersion = _cache.Insert(cacheKey, cacheItem, null, cacheLockHandle, true);
+
+                    return new DataCacheItemVersion(cacheItemVersion);
+                }
+                else
+                {
+                    if (cacheLockHandle.LockId != null)
+                    {
+                        throw new DataCacheException("Invalid lock handle")
+                        {
+                            ErrorCode = DataCacheErrorCode.InvalidCacheLockHandle
+                        };
+                    }
+                    else
+                    {
+                        if (_cache.Contains(DataFormatter.MarshalRegionKey(region)))
+                        {
+                            throw new DataCacheException("Key does not exist")
+                            {
+                                ErrorCode = DataCacheErrorCode.KeyDoesNotExist
+                            };
+                        }
+                        else
+                        {
+                            throw new DataCacheException("Region does not exist")
+                            {
+                                ErrorCode = DataCacheErrorCode.RegionDoesNotExist
+                            };
+                        }
+                    }
+                }
+
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_LOCKED)
+                    {
+                        throw new DataCacheException("Invalid lock handle", ex)
+                        {
+                            ErrorCode = DataCacheErrorCode.InvalidCacheLockHandle
+                        };
+                    }
+                    else if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_WITH_VERSION_DOESNT_EXIST)
+                    {
+                        throw new DataCacheException("Item updated outside lock", ex)
+                        {
+                            ErrorCode = DataCacheErrorCode.ObjectNotLocked
+                        };
+                    }
+                    else if (ex.ErrorCode == ErrorCodes.Common.DEPENDENCY_KEY_NOT_FOUND)
+                    {
+                        throw new DataCacheException("Region not found", ex)
+                        {
+                            ErrorCode = DataCacheErrorCode.RegionDoesNotExist
+                        };
+                    }
+                    else
+                    {
+                        throw CommonCacheExceptions(ex);
+                    }
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+        internal DataCacheItemVersion PutAndUnlock(string key, object value, DataCacheLockHandle lockHandle, TimeSpan timeout, IEnumerable<DataCacheTag> tags)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (value == null)
+                {
+                    throw new ArgumentNullException(nameof(value), "Value cannot be null.");
+                }
+
+                if (lockHandle == null)
+                {
+                    throw new ArgumentNullException(nameof(lockHandle), "Value cannot be null.");
+                }
+
+                if (tags == null)
+                {
+                    throw new ArgumentNullException(nameof(tags), "Value cannot be null.");
+                }
+
+                if (tags.Count() == 0 || tags.Any(x => x == null))
+                {
+                    throw new ArgumentException("Either the collection passed is empty or one of the tags passed is null.", nameof(tags));
+                }
+
+                if (timeout <= TimeSpan.Zero)
+                {
+                    throw new ArgumentException("Time-out should be a positive value.", nameof(timeout));
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key);
+                var cacheLockHandle = lockHandle.LockHandle;
+
+                var oldCacheItem = _cache.GetCacheItem(cacheKey, false, new TimeSpan(0, 0, 2), ref cacheLockHandle);
+
+                if (oldCacheItem != null)
+                {
+                    var cacheItem = DataFormatter.CreateCacheItem(value, tags, null, _expirable, timeout);
+                    cacheItem.Version = oldCacheItem.Version;
+                    var cacheItemVersion = _cache.Insert(cacheKey, cacheItem, null, cacheLockHandle, true);
+
+                    return new DataCacheItemVersion(cacheItemVersion);
+                }
+                else
+                {
+                    if (cacheLockHandle.LockId != null)
+                    {
+                        throw new DataCacheException("Invalid lock handle")
+                        {
+                            ErrorCode = DataCacheErrorCode.InvalidCacheLockHandle
+                        };
+                    }
+                    else
+                    {
+                        throw new DataCacheException("Key does not exist")
+                        {
+                            ErrorCode = DataCacheErrorCode.KeyDoesNotExist
+                        };
+                    }
+                }
+
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_LOCKED)
+                    {
+                        throw new DataCacheException("Invalid lock handle", ex)
+                        {
+                            ErrorCode = DataCacheErrorCode.InvalidCacheLockHandle
+                        };
+                    }
+                    else if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_WITH_VERSION_DOESNT_EXIST)
+                    {
+                        throw new DataCacheException("Item updated outside lock", ex)
+                        {
+                            ErrorCode = DataCacheErrorCode.ObjectNotLocked
+                        };
+                    }
+                    else
+                    {
+                        throw CommonCacheExceptions(ex);
+                    }
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+        internal DataCacheItemVersion PutAndUnlock(string key, object value, DataCacheLockHandle lockHandle, TimeSpan timeout, string region)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (value == null)
+                {
+                    throw new ArgumentNullException(nameof(value), "Value cannot be null.");
+                }
+
+                if (string.IsNullOrWhiteSpace(region))
+                {
+                    throw new ArgumentNullException(nameof(region), "Value cannot be null.");
+                }
+
+                if (lockHandle == null)
+                {
+                    throw new ArgumentNullException(nameof(lockHandle), "Value cannot be null.");
+                }
+
+                if (timeout <= TimeSpan.Zero)
+                {
+                    throw new ArgumentException("Time-out should be a positive value.", nameof(timeout));
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key, region);
+                var cacheLockHandle = lockHandle.LockHandle;
+
+                var oldCacheItem = _cache.GetCacheItem(cacheKey, false, new TimeSpan(0, 0, 2), ref cacheLockHandle);
+
+                if (oldCacheItem != null)
+                {
+                    var cacheItem = DataFormatter.CreateCacheItem(value, null, region, _expirable, timeout);
+                    cacheItem.Version = oldCacheItem.Version;
+
+                    var cacheItemVersion = _cache.Insert(cacheKey, cacheItem, null, cacheLockHandle, true);
+
+                    return new DataCacheItemVersion(cacheItemVersion);
+                }
+                else
+                {
+                    if (cacheLockHandle.LockId != null)
+                    {
+                        throw new DataCacheException("Invalid lock handle")
+                        {
+                            ErrorCode = DataCacheErrorCode.InvalidCacheLockHandle
+                        };
+                    }
+                    else
+                    {
+                        if (_cache.Contains(DataFormatter.MarshalRegionKey(region)))
+                        {
+                            throw new DataCacheException("Key does not exist")
+                            {
+                                ErrorCode = DataCacheErrorCode.KeyDoesNotExist
+                            };
+                        }
+                        else
+                        {
+                            throw new DataCacheException("Region does not exist")
+                            {
+                                ErrorCode = DataCacheErrorCode.RegionDoesNotExist
+                            };
+                        }
+                    }
+                }
+
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_LOCKED)
+                    {
+                        throw new DataCacheException("Invalid lock handle", ex)
+                        {
+                            ErrorCode = DataCacheErrorCode.InvalidCacheLockHandle
+                        };
+                    }
+                    else if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_WITH_VERSION_DOESNT_EXIST)
+                    {
+                        throw new DataCacheException("Item updated outside lock", ex)
+                        {
+                            ErrorCode = DataCacheErrorCode.ObjectNotLocked
+                        };
+                    }
+                    else if (ex.ErrorCode == ErrorCodes.Common.DEPENDENCY_KEY_NOT_FOUND)
+                    {
+                        throw new DataCacheException("Region not found", ex)
+                        {
+                            ErrorCode = DataCacheErrorCode.RegionDoesNotExist
+                        };
+                    }
+                    else
+                    {
+                        throw CommonCacheExceptions(ex);
+                    }
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+        internal DataCacheItemVersion PutAndUnlock(string key, object value, DataCacheLockHandle lockHandle, TimeSpan timeout, IEnumerable<DataCacheTag> tags, string region)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (value == null)
+                {
+                    throw new ArgumentNullException(nameof(value), "Value cannot be null.");
+                }
+
+                if (string.IsNullOrWhiteSpace(region))
+                {
+                    throw new ArgumentNullException(nameof(region), "Value cannot be null.");
+                }
+
+                if (lockHandle == null)
+                {
+                    throw new ArgumentNullException(nameof(lockHandle), "Value cannot be null.");
+                }
+
+                if (tags == null)
+                {
+                    throw new ArgumentNullException(nameof(tags), "Value cannot be null.");
+                }
+
+                if (tags.Count() == 0 || tags.Any(x => x == null))
+                {
+                    throw new ArgumentException("Either the collection passed is empty or one of the tags passed is null.", nameof(tags));
+                }
+
+                if (timeout <= TimeSpan.Zero)
+                {
+                    throw new ArgumentException("Time-out should be a positive value.", nameof(timeout));
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key, region);
+                var cacheLockHandle = lockHandle.LockHandle;
+
+                var oldCacheItem = _cache.GetCacheItem(cacheKey, false, new TimeSpan(0, 0, 2), ref cacheLockHandle);
+
+                if (oldCacheItem != null)
+                {
+                    var cacheItem = DataFormatter.CreateCacheItem(value, tags, region, _expirable, timeout);
+                    cacheItem.Version = oldCacheItem.Version;
+
+                    var cacheItemVersion = _cache.Insert(cacheKey, cacheItem, null, cacheLockHandle, true);
+
+                    return new DataCacheItemVersion(cacheItemVersion);
+                }
+                else
+                {
+                    if (cacheLockHandle.LockId != null)
+                    {
+                        throw new DataCacheException("Invalid lock handle")
+                        {
+                            ErrorCode = DataCacheErrorCode.InvalidCacheLockHandle
+                        };
+                    }
+                    else
+                    {
+                        if (_cache.Contains(DataFormatter.MarshalRegionKey(region)))
+                        {
+                            throw new DataCacheException("Key does not exist")
+                            {
+                                ErrorCode = DataCacheErrorCode.KeyDoesNotExist
+                            };
+                        }
+                        else
+                        {
+                            throw new DataCacheException("Region does not exist")
+                            {
+                                ErrorCode = DataCacheErrorCode.RegionDoesNotExist
+                            };
+                        }
+                    }
+                }
+
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_LOCKED)
+                    {
+                        throw new DataCacheException("Invalid lock handle", ex)
+                        {
+                            ErrorCode = DataCacheErrorCode.InvalidCacheLockHandle
+                        };
+                    }
+                    else if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_WITH_VERSION_DOESNT_EXIST)
+                    {
+                        throw new DataCacheException("Item updated outside lock", ex)
+                        {
+                            ErrorCode = DataCacheErrorCode.ObjectNotLocked
+                        };
+                    }
+                    else if (ex.ErrorCode == ErrorCodes.Common.DEPENDENCY_KEY_NOT_FOUND)
+                    {
+                        throw new DataCacheException("Region not found")
+                        {
+                            ErrorCode = DataCacheErrorCode.RegionDoesNotExist
+                        };
+                    }
+                    else
+                    {
+                        throw CommonCacheExceptions(ex);
+                    }
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+
+
+
+
+        internal void Unlock(string key, DataCacheLockHandle lockHandle)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (lockHandle == null)
+                {
+                    throw new ArgumentNullException(nameof(lockHandle), "Value cannot be null.");
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key);
+
+                LockHandle cacheLockHandle = lockHandle.LockHandle;
+                var cacheItem = _cache.GetCacheItem(cacheKey, false, new TimeSpan(0, 0, 2), ref cacheLockHandle);
+
+                if (cacheItem != null)
+                {
+                    _cache.Insert(cacheKey, cacheItem, null, cacheLockHandle, true);
+                }
+                else
+                {
+                    if (cacheLockHandle.LockId != null)
+                    {
+                        throw new DataCacheException("Invalid lock handle.")
+                        {
+                            ErrorCode = DataCacheErrorCode.InvalidCacheLockHandle
+                        };
+                    }
+                    else
+                    {
+                        throw new DataCacheException("Key not found.")
+                        {
+                            ErrorCode = DataCacheErrorCode.KeyDoesNotExist
+                        };
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_LOCKED)
+                    {
+                        throw new DataCacheException("Invalid lock handle", ex)
+                        {
+                            ErrorCode = DataCacheErrorCode.InvalidCacheLockHandle
+                        };
+                    }
+                    else if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_WITH_VERSION_DOESNT_EXIST)
+                    {
+                        throw new DataCacheException("Item updated outside lock", ex)
+                        {
+                            ErrorCode = DataCacheErrorCode.ObjectNotLocked
+                        };
+                    }
+                    else
+                    {
+                        throw CommonCacheExceptions(ex);
+                    }
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+        internal void Unlock(string key, DataCacheLockHandle lockHandle, TimeSpan timeout)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (lockHandle == null)
+                {
+                    throw new ArgumentNullException(nameof(lockHandle), "Value cannot be null.");
+                }
+
+                if (timeout <= TimeSpan.Zero)
+                {
+                    throw new ArgumentException("Time-out should be a positive value.", nameof(timeout));
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key);
+
+                LockHandle cacheLockHandle = lockHandle.LockHandle;
+                var cacheItem = _cache.GetCacheItem(cacheKey, false, new TimeSpan(0, 0, 2), ref cacheLockHandle);
+
+                if (cacheItem != null)
+                {
+                    cacheItem.Expiration = new Expiration(ExpirationType.Absolute, timeout);
+
+                    _cache.Insert(cacheKey, cacheItem, null, cacheLockHandle, true);
+                }
+                else
+                {
+                    if (cacheLockHandle.LockId != null)
+                    {
+                        throw new DataCacheException("Invalid lock handle.")
+                        {
+                            ErrorCode = DataCacheErrorCode.InvalidCacheLockHandle
+                        };
+                    }
+
+                    else
+                    {
+                        throw new DataCacheException("Key not found.")
+                        {
+                            ErrorCode = DataCacheErrorCode.KeyDoesNotExist
+                        };
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_LOCKED)
+                    {
+                        throw new DataCacheException("Invalid lock handle", ex)
+                        {
+                            ErrorCode = DataCacheErrorCode.InvalidCacheLockHandle
+                        };
+                    }
+                    else if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_WITH_VERSION_DOESNT_EXIST)
+                    {
+                        throw new DataCacheException("Item updated outside lock", ex)
+                        {
+                            ErrorCode = DataCacheErrorCode.ObjectNotLocked
+                        };
+                    }
+                    else
+                    {
+                        throw CommonCacheExceptions(ex);
+                    }
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+        internal void Unlock(string key, DataCacheLockHandle lockHandle, string region)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (lockHandle == null)
+                {
+                    throw new ArgumentNullException(nameof(lockHandle), "Value cannot be null.");
+                }
+
+                if (string.IsNullOrWhiteSpace(region))
+                {
+                    throw new ArgumentNullException(nameof(region), "Value cannot be null.");
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key, region);
+
+                LockHandle cacheLockHandle = lockHandle.LockHandle;
+                var cacheItem = _cache.GetCacheItem(cacheKey, false, new TimeSpan(0, 0, 2), ref cacheLockHandle);
+
+                if (cacheItem != null)
+                {
+                    _cache.Insert(cacheKey, cacheItem, null, cacheLockHandle, true);
+                }
+                else
+                {
+                    if (cacheLockHandle.LockId != null)
+                    {
+                        throw new DataCacheException("Invalid lock handle.")
+                        {
+                            ErrorCode = DataCacheErrorCode.InvalidCacheLockHandle
+                        };
+                    }
+                    else
+                    {
+                        if (_cache.Contains(DataFormatter.MarshalRegionKey(region)))
+                        {
+                            throw new DataCacheException("Key not found.")
+                            {
+                                ErrorCode = DataCacheErrorCode.KeyDoesNotExist
+                            };
+                        }
+                        else
+                        {
+                            throw new DataCacheException("Region not found.")
+                            {
+                                ErrorCode = DataCacheErrorCode.RegionDoesNotExist
+                            };
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_LOCKED)
+                    {
+                        throw new DataCacheException("Invalid lock handle", ex)
+                        {
+                            ErrorCode = DataCacheErrorCode.InvalidCacheLockHandle
+                        };
+                    }
+                    else if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_WITH_VERSION_DOESNT_EXIST)
+                    {
+                        throw new DataCacheException("Item updated outside lock", ex)
+                        {
+                            ErrorCode = DataCacheErrorCode.ObjectNotLocked
+                        };
+                    }
+                    else if (ex.ErrorCode == ErrorCodes.Common.DEPENDENCY_KEY_NOT_FOUND)
+                    {
+                        throw new DataCacheException("Region does not exist.", ex)
+                        {
+                            ErrorCode = DataCacheErrorCode.RegionDoesNotExist
+                        };
+                    }
+                    else
+                    {
+                        throw CommonCacheExceptions(ex);
+                    }
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+        internal void Unlock(string key, DataCacheLockHandle lockHandle, TimeSpan timeOut, string region)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (lockHandle == null)
+                {
+                    throw new ArgumentNullException(nameof(lockHandle), "Value cannot be null.");
+                }
+
+                if (string.IsNullOrWhiteSpace(region))
+                {
+                    throw new ArgumentNullException(nameof(region), "Value cannot be null.");
+                }
+
+                if (timeOut <= TimeSpan.Zero)
+                {
+                    throw new ArgumentException("Time-out should be a positive value.", nameof(timeOut));
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key, region);
+
+                LockHandle cacheLockHandle = lockHandle.LockHandle;
+                var cacheItem = _cache.GetCacheItem(cacheKey, false, new TimeSpan(0, 0, 2), ref cacheLockHandle);
+
+                if (cacheItem != null)
+                {
+                    cacheItem.Expiration = new Expiration(ExpirationType.Absolute, timeOut);
+
+                    _cache.Insert(cacheKey, cacheItem, null, cacheLockHandle, true);
+                }
+                else
+                {
+                    if (cacheLockHandle.LockId != null)
+                    {
+                        throw new DataCacheException("Invalid lock handle.")
+                        {
+                            ErrorCode = DataCacheErrorCode.InvalidCacheLockHandle
+                        };
+                    }
+                    else
+                    {
+                        if (_cache.Contains(DataFormatter.MarshalRegionKey(region)))
+                        {
+                            throw new DataCacheException("Key not found.")
+                            {
+                                ErrorCode = DataCacheErrorCode.KeyDoesNotExist
+                            };
+                        }
+                        else
+                        {
+                            throw new DataCacheException("Region not found.")
+                            {
+                                ErrorCode = DataCacheErrorCode.RegionDoesNotExist
+                            };
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_LOCKED)
+                    {
+                        throw new DataCacheException("Invalid lock handle", ex)
+                        {
+                            ErrorCode = DataCacheErrorCode.InvalidCacheLockHandle
+                        };
+                    }
+                    else if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_WITH_VERSION_DOESNT_EXIST)
+                    {
+                        throw new DataCacheException("Item updated outside lock", ex)
+                        {
+                            ErrorCode = DataCacheErrorCode.ObjectNotLocked
+                        };
+                    }
+                    else if (ex.ErrorCode == ErrorCodes.Common.DEPENDENCY_KEY_NOT_FOUND)
+                    {
+                        throw new DataCacheException("Region does not exist.", ex)
+                        {
+                            ErrorCode = DataCacheErrorCode.RegionDoesNotExist
+                        };
+                    }
+                    else
+                    {
+                        throw CommonCacheExceptions(ex);
+                    }
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+
+
+
+        internal void ResetObjectTimeout(string key, TimeSpan timeOut)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (timeOut <= TimeSpan.Zero)
+                {
+                    throw new ArgumentException("Time-out should be a positive value.", nameof(timeOut));
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key);
+                var cacheItem = _cache.GetCacheItem(cacheKey);
+
+                if (cacheItem == null)
+                {
+                    throw new DataCacheException("Key not found.")
+                    {
+                        ErrorCode = DataCacheErrorCode.KeyDoesNotExist
+                    };
+                }
+
+                cacheItem.Expiration = new Expiration(ExpirationType.Absolute, timeOut);
+
+                _cache.Insert(cacheKey, cacheItem);
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_WITH_VERSION_DOESNT_EXIST)
+                    {
+                        throw new DataCacheException("Invalid item version", ex)
+                        {
+                            ErrorCode = DataCacheErrorCode.CacheItemVersionMismatch
+                        };
+                    }
+                    else
+                    {
+                        throw CommonCacheExceptions(ex);
+                    }
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+        internal void ResetObjectTimeout(string key, TimeSpan timeOut, string region)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                }
+
+                if (timeOut <= TimeSpan.Zero)
+                {
+                    throw new ArgumentException("Time-out should be a positive value.", nameof(timeOut));
+                }
+
+                if (string.IsNullOrWhiteSpace(region))
+                {
+                    throw new ArgumentNullException(nameof(region), "Value cannot be null.");
+                }
+
+                var cacheKey = DataFormatter.MarshalKey(key, region);
+                var cacheItem = _cache.GetCacheItem(cacheKey);
+
+                if (cacheItem == null)
+                {
+                    if (!_cache.Contains(DataFormatter.MarshalRegionKey(region)))
+                    {
+                        throw new DataCacheException("Region does not exist.")
+                        {
+                            ErrorCode = DataCacheErrorCode.RegionDoesNotExist
+                        };
+                    }
+                    else
+                    {
+                        throw new DataCacheException("Key not found.")
+                        {
+                            ErrorCode = DataCacheErrorCode.KeyDoesNotExist
+                        };
+                    }
+                }
+
+                cacheItem.Expiration = new Expiration(ExpirationType.Absolute, timeOut);
+
+                _cache.Insert(cacheKey, cacheItem);
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_WITH_VERSION_DOESNT_EXIST)
+                    {
+                        throw new DataCacheException("Invalid item version", ex)
+                        {
+                            ErrorCode = DataCacheErrorCode.CacheItemVersionMismatch
+                        };
+                    }
+                    else if (ex.ErrorCode == ErrorCodes.Common.DEPENDENCY_KEY_NOT_FOUND)
+                    {
+                        throw new DataCacheException("Region does not exist.", ex)
+                        {
+                            ErrorCode = DataCacheErrorCode.RegionDoesNotExist
+                        };
+                    }
+                    else
+                    {
+                        throw CommonCacheExceptions(ex);
+                    }
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+
+
+        internal bool CreateRegion(string region)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(region))
+                {
+                    throw new ArgumentNullException(nameof(region), "Value cannot be null.");
+                }
+
+                _cache.Add(DataFormatter.MarshalRegionKey(region), region);
+                return true;
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.KEY_ALREADY_EXISTS)
+                    {
+                        return false;
+                    }
+                    else
+                    {
+                        throw CommonCacheExceptions(ex);
+                    }
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+        internal bool RemoveRegion(string region)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(region))
+                {
+                    throw new ArgumentNullException(nameof(region), "Value cannot be null.");
+                }
+
+                var result = _cache.Remove(DataFormatter.MarshalRegionKey(region), out object removedItem);
+
+                return removedItem != null;
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    throw CommonCacheExceptions(ex);
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+        internal void ClearRegion(string region)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(region))
+                {
+                    throw new ArgumentNullException(nameof(region), "Value cannot be null.");
+                }
+
+                if (!_cache.Contains(DataFormatter.MarshalRegionKey(region)))
+                {
+                    throw new DataCacheException("Region not found")
+                    {
+                        ErrorCode = DataCacheErrorCode.RegionDoesNotExist
+                    };
+                }
+
+                _cache.Insert(DataFormatter.MarshalRegionKey(region), region);
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    throw CommonCacheExceptions(ex);
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+
+
+        internal string GetSystemRegionName(string key)
+        {
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                throw new ArgumentNullException(key);
+            }
+
+            return "Default_Region";
+        }
+
+
+        internal IEnumerable<string> GetSystemRegions()
+        {
+            yield return "Default_Region";
+        }
+
+
+
+        internal DataCacheNotificationDescriptor AddCacheLevelCallback(DataCacheOperations filter, DataCacheNotificationCallback callBack)
+        {
+            return GetDataCacheNotificationDescriptor(null, null, filter, callBack, CallbackType.CacheLevelCallback);
+        }
+
+        internal DataCacheNotificationDescriptor AddRegionLevelCallback(string region, DataCacheOperations filter, DataCacheNotificationCallback callBack)
+        {
+            return GetDataCacheNotificationDescriptor(null, region, filter, callBack, CallbackType.RegionSpecificCallback);
+        }
+
+        internal DataCacheNotificationDescriptor AddItemLevelCallback(string key, DataCacheOperations filter, DataCacheNotificationCallback callBack)
+        {
+            return GetDataCacheNotificationDescriptor(key, null, filter, callBack, CallbackType.ItemSpecificCallback);
+        }
+
+        internal DataCacheNotificationDescriptor AddItemLevelCallback(string key, DataCacheOperations filter, DataCacheNotificationCallback callBack, string region)
+        {
+            return GetDataCacheNotificationDescriptor(key, region, filter, callBack, CallbackType.RegionSpecificItemCallback);
+        }
+
+        internal DataCacheNotificationDescriptor AddCacheLevelBulkCallback(DataCacheBulkNotificationCallback callBack)
+        {
+            try
+            {
+                if (callBack == null)
+                {
+                    throw new ArgumentNullException(nameof(callBack), "Value cannot be null.");
+                }
+
+                var notificationDescriptor = new DataCacheNotificationDescriptor(_cacheName);
+
+                var bulkCacheHandler = new BulkCallbackHandler
+                {
+                    CacheId = _cacheName,
+                    BulkCallback = callBack,
+                    NotificationDescriptor = new DataCacheNotificationDescriptor(notificationDescriptor)
+                };
+
+                bulkCacheHandler.NCacheEventDescriptor = _cache.MessagingService.RegisterCacheNotification(bulkCacheHandler.OnCacheDataModification, EventType.ItemAdded | EventType.ItemRemoved | EventType.ItemUpdated, EventDataFilter.Metadata);
+
+                var result = _callbackMap.TryAdd(notificationDescriptor.ToString(), bulkCacheHandler);
+
+                if (!result)
+                {
+                    throw new Exception("Notification descriptor with given delegate ID already exists");
+                }
+
+                return notificationDescriptor;
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    throw CommonCacheExceptions(ex);
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+        [Obsolete("NCache does not support failure notifications", true)]
+        internal DataCacheNotificationDescriptor AddFailureNotificationCallback(DataCacheFailureNotificationCallback callBack)
+        {
+            throw new NotSupportedException();
+        }
+
+        internal void RemoveCallback(DataCacheNotificationDescriptor nd)
+        {
+            try
+            {
+                if (nd == null)
+                {
+                    throw new ArgumentNullException(nameof(nd), "Notification descriptor is null");
+                }
+
+                var ndString = nd.ToString();
+
+                var result = _callbackMap.TryGetValue(ndString, out ICallBackHandler value);
+                if (result)
+                {
+                    _cache.MessagingService.UnRegisterCacheNotification(value.NCacheEventDescriptor);
+                }
+                _callbackMap.TryRemove(ndString, out value);
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    throw CommonCacheExceptions(ex);
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+
+        private DataCacheNotificationDescriptor GetDataCacheNotificationDescriptor(string key, string region, DataCacheOperations filter, DataCacheNotificationCallback callback, CallbackType type)
+        {
+            try
+            {
+                if (callback == null)
+                {
+                    throw new ArgumentNullException(nameof(callback), "Value cannot be null.");
+                }
+
+                if (type == CallbackType.RegionSpecificCallback || type == CallbackType.RegionSpecificItemCallback)
+                {
+                    if (string.IsNullOrWhiteSpace(region))
+                    {
+                        throw new ArgumentNullException(nameof(region), "Value cannot be null.");
+                    }
+                }
+
+                if (type == CallbackType.RegionSpecificItemCallback || type == CallbackType.ItemSpecificCallback)
+                {
+                    if (string.IsNullOrWhiteSpace(key))
+                    {
+                        throw new ArgumentNullException(nameof(key), "Value cannot be null.");
+                    }
+                }
+
+                var notificationDescriptor = new DataCacheNotificationDescriptor(_cacheName);
+
+                var callBackHandler = new CallbackHandler
+                {
+                    Region = region,
+                    CacheId = _cacheName,
+                    Callback = callback,
+                    Operation = filter,
+                    NotificationDescriptor = new DataCacheNotificationDescriptor(notificationDescriptor),
+                    Key = key,
+                    Type = type
+                };
+
+                var eventType = CallbackHandler.GetEventType(filter);
+
+                callBackHandler.NCacheEventDescriptor = _cache.MessagingService.RegisterCacheNotification(new CacheDataNotificationCallback(callBackHandler.OnCacheDataModification), eventType, EventDataFilter.Metadata);
+
+                var result = _callbackMap.TryAdd(notificationDescriptor.ToString(), callBackHandler);
+
+                if (!result)
+                {
+                    throw new Exception("Notification descriptor with given delegate ID already exists");
+                }
+
+                return notificationDescriptor;
+            }
+            catch (Exception e)
+            {
+                CacheException ex = e as CacheException;
+                if (ex != null)
+                {
+                    throw CommonCacheExceptions(ex);
+                }
+                else
+                {
+                    throw e;
+                }
+            }
+        }
+
+        private static Exception CommonCacheExceptions(CacheException ex)
+        {
+            if (ex.ErrorCode == ErrorCodes.Common.NO_SERVER_AVAILABLE)
+            {
+                return new DataCacheException("Server timeout", ex)
+                {
+                    ErrorCode = DataCacheErrorCode.Timeout
+                };
+
+            }
+            else if (ex.ErrorCode == ErrorCodes.Common.CONNECTIVITY_LOST)
+            {
+                return new DataCacheException("Connectivity lost", ex)
+                {
+                    ErrorCode = DataCacheErrorCode.RetryLater,
+                    SubStatus = DataCacheErrorSubStatus.CacheServerUnavailable
+                };
             }
             else
             {
-                _NCache.Unlock(_key, lockHandle);
+                return new DataCacheException("Undefined", ex)
+                {
+                    ErrorCode = DataCacheErrorCode.UndefinedError
+                };
             }
-            return true;
         }
-           
     }
 }

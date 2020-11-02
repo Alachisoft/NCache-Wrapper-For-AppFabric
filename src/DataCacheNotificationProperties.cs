@@ -1,13 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 namespace Alachisoft.NCache.Data.Caching
 {
     public class DataCacheNotificationProperties
     {
-        #region[    Constructor ]
         public DataCacheNotificationProperties(long maxQueueLength, TimeSpan pollInterval)
         {
             MaxQueueLength = maxQueueLength;
@@ -19,8 +15,6 @@ namespace Alachisoft.NCache.Data.Caching
             MaxQueueLength = other.MaxQueueLength;
             PollInterval = other.PollInterval;
         }
-        #endregion
-
         public long MaxQueueLength { get; private set; }
         public TimeSpan PollInterval { get; private set; }
 
@@ -50,12 +44,11 @@ namespace Alachisoft.NCache.Data.Caching
 
             return MaxQueueLength == other.MaxQueueLength && PollInterval == other.PollInterval;
         }
-
         public override int GetHashCode()
         {
             unchecked
             {
-                return base.GetHashCode(); 
+                return base.GetHashCode();
             }
         }
     }

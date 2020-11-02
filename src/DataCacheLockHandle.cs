@@ -1,21 +1,20 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using Alachisoft.NCache.Web.Caching;
+﻿using Alachisoft.NCache.Client;
+
 namespace Alachisoft.NCache.Data.Caching
 {
     public class DataCacheLockHandle
     {
-        #region[    Constructor ]
-        public DataCacheLockHandle()
-        { }
-        #endregion
-
+        internal DataCacheLockHandle(LockHandle lockHandle)
+        {
+            LockHandle = lockHandle;
+        }
         public override string ToString()
         {
-            return base.ToString();
+            if (this == null || this.LockHandle == null)
+                return null;
+
+            return LockHandle.LockId;
         }
-        internal LockHandle _lockHandle{get;set;} 
+        internal LockHandle LockHandle { get; }
     }
 }
