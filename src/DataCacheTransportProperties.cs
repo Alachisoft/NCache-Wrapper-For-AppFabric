@@ -2,13 +2,8 @@
 
 namespace Alachisoft.NCache.Data.Caching
 {
-    public class DataCacheTransportProperties :ICloneable
+    public class DataCacheTransportProperties : ICloneable
     {
-        #region[    Constructor ]
-        public DataCacheTransportProperties()
-        { }
-        #endregion
-
         public TimeSpan ChannelInitializationTimeout { get; set; }
         public int ConnectionBufferSize { get; set; }
         public long MaxBufferPoolSize { get; set; }
