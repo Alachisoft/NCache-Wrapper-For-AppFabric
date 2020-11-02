@@ -1,21 +1,29 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using Newtonsoft.Json;
 
 namespace Alachisoft.NCache.Data.Caching
 {
     public class BaseOperationNotification
     {
-        public string CacheName{get; set;}
-        public DataCacheOperations OperationType { get; set; }
-        public DataCacheItemVersion Version { get; set; }
+        [JsonConstructor]
+        public BaseOperationNotification(string cacheName, DataCacheOperations opType, DataCacheItemVersion version)
+        {
+            CacheName = cacheName;
+            OperationType = opType;
+            Version = version;
+        }
 
-        #region[    Constructors    ]
-        public BaseOperationNotification(string caheName, DataCacheOperations opType, DataCacheItemVersion version)
-        { }
-        internal BaseOperationNotification()
-        { }
-        #endregion
+        public string CacheName { get; }
+        public DataCacheOperations OperationType { get; }
+        public DataCacheItemVersion Version { get; }
+
+        public override string ToString()
+        {
+            if (this == null)
+            {
+                return null;
+            }
+
+            return JsonConvert.SerializeObject(this);
+        }
     }
 }
