@@ -1,33 +1,24 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-namespace Alachisoft.NCache.Data.Caching
+﻿namespace Alachisoft.NCache.Data.Caching
 {
     public class DataCacheSecurity
     {
-        #region[    Constructors ]
-        public DataCacheSecurity() 
+        public DataCacheSecurity()
         {
             ProtectionLevel = DataCacheProtectionLevel.None;
             SecurityMode = DataCacheSecurityMode.None;
         }
-        public DataCacheSecurity(DataCacheSecurityMode securityMode, DataCacheProtectionLevel protectionLevel) 
+        public DataCacheSecurity(DataCacheSecurityMode securityMode, DataCacheProtectionLevel protectionLevel)
         {
             ProtectionLevel = protectionLevel;
             SecurityMode = securityMode;
         }
-
         internal DataCacheSecurity(DataCacheSecurity other)
         {
             ProtectionLevel = other.ProtectionLevel;
             SecurityMode = other.SecurityMode;
         }
-        #endregion
-
-        public DataCacheProtectionLevel ProtectionLevel { get; private set; }
-        public DataCacheSecurityMode SecurityMode { get; private set; }
+        public DataCacheProtectionLevel ProtectionLevel { get; }
+        public DataCacheSecurityMode SecurityMode { get; }
 
         public override bool Equals(object obj)
         {
