@@ -99,7 +99,7 @@ Before running the application, replace the cache server name given by the cache
 	client-request-timeout="90" 
 	connection-timeout="5" port="9800"/>
     <cache 
-	id="myCache" 
+	id="democache" 
 	client-cache-id="" 
 	client-cache-syncmode="optimistic" 
 	default-readthru-provider="" 

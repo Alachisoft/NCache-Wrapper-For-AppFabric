@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30104.148
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NativeAppFabricConsoleUI", "NativeAppFabricConsoleUI\NativeAppFabricConsoleUI.csproj", "{2068CDD2-F683-47D4-AA23-BC0BB15B1F87}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NCacheAppFabricConsoleUI", "NCacheAppFabricConsoleUI\NCacheAppFabricConsoleUI.csproj", "{61005B34-13E8-4991-AF92-E3FD5F1D71B4}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2068CDD2-F683-47D4-AA23-BC0BB15B1F87}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2068CDD2-F683-47D4-AA23-BC0BB15B1F87}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2068CDD2-F683-47D4-AA23-BC0BB15B1F87}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2068CDD2-F683-47D4-AA23-BC0BB15B1F87}.Release|Any CPU.Build.0 = Release|Any CPU
+		{61005B34-13E8-4991-AF92-E3FD5F1D71B4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{61005B34-13E8-4991-AF92-E3FD5F1D71B4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{61005B34-13E8-4991-AF92-E3FD5F1D71B4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{61005B34-13E8-4991-AF92-E3FD5F1D71B4}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {462BA2A8-6031-4AF3-9DB9-F065D31F2603}
+	EndGlobalSection
+EndGlobal

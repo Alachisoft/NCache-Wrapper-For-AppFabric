@@ -1,0 +1,81 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{2068CDD2-F683-47D4-AA23-BC0BB15B1F87}</ProjectGuid>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>NativeAppFabricConsoleUI</RootNamespace>
+    <AssemblyName>NativeAppFabricConsoleUI</AssemblyName>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Microsoft.ApplicationServer.Caching.Client, Version=1.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.ApplicationServer.Caching.Client.1.0.4657.2\lib\net35\Microsoft.ApplicationServer.Caching.Client.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.ApplicationServer.Caching.Core, Version=1.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.ApplicationServer.Caching.Client.1.0.4657.2\lib\net35\Microsoft.ApplicationServer.Caching.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Configuration" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="BulkGetTests\BulkGetTests.cs" />
+    <Compile Include="ErrorCodeLookup.cs" />
+    <Compile Include="Expirations\ExpirationTests.cs" />
+    <Compile Include="Concurrency\OptimisticConcurrencyTests.cs" />
+    <Compile Include="Concurrency\PessimisticConcurrencyTests.cs" />
+    <Compile Include="Notifications\NotificationTests.cs" />
+    <Compile Include="RegionLevelBasicOperations\GetInRegionTests.cs" />
+    <Compile Include="RegionLevelBasicOperations\PutInRegionTests.cs" />
+    <Compile Include="RegionLevelBasicOperations\AddInRegionTests.cs" />
+    <Compile Include="RegionLevelBasicOperations\ClearRegionTests.cs" />
+    <Compile Include="Logger.cs" />
+    <Compile Include="Program.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="CacheLevelBasicOperations\GetInCacheTests.cs" />
+    <Compile Include="RegionLevelBasicOperations\CreateRegionTests.cs" />
+    <Compile Include="CacheLevelBasicOperations\AddInCacheTests.cs" />
+    <Compile Include="CacheLevelBasicOperations\PutInCacheTests.cs" />
+    <Compile Include="CacheLevelBasicOperations\RemoveInCacheTests.cs" />
+    <Compile Include="RegionLevelBasicOperations\RemoveRegionTests.cs" />
+    <Compile Include="RegionLevelBasicOperations\RemoveInRegionTests.cs" />
+    <Compile Include="SearchOperations\TagsTests.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="App.config">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup />
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>
