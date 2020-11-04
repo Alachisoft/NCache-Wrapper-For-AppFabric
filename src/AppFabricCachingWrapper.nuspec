@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>AppFabric.Wrapper.NCache</id>
-    <version>5.0.3.2</version>
+    <version>5.0.4</version>
     <title>AppFabric Wrapper Using NCache</title>
     <authors>Alachisoft</authors>
     <owners>Alachisoft</owners>
@@ -12,10 +12,10 @@
     <iconUrl>http://www.alachisoft.com/images/ext-logos/nuget/ncache-insignia-logo-155X155.png</iconUrl>
     <description>AppFabric wrapper using NCache to port your .Net application from AppFabric to NCache with minimal code change</description>
     <copyright>Copyright 2005-2020 Alachisoft. All rights reserved.</copyright>
-    <tags>Alachisoft NCache Cache Caching DistributedCache In-Memory Enterprise 5.0 SignalR AspNetSignalR AspNet AppFabric Wrapper Distributed Object ObjectCaching Microsoft</tags>
+    <tags>Alachisoft NCache Cache Caching DistributedCache In-Memory Enterprise 5.0 AppFabric Wrapper Distributed Object ObjectCaching Microsoft Migrate Alternate Replacement Alternative</tags>
     <dependencies>
       <group targetFramework=".NETFramework4.0">
-        <dependency id="Alachisoft.NCache.SDK" version="5.0.3" />
+        <dependency id="Alachisoft.NCache.SDK" version="5.0.4.1" />
       </group>
     </dependencies>
   </metadata>
