@@ -265,19 +265,19 @@ namespace Alachisoft.NCache.Data.Caching
         {
             return _cacheHandler.GetAndLock(key, timeout, out lockHandle);
         }
-        [Obsolete("NCache does not support locking on non-existing objects", true)]
+
         public object GetAndLock(string key, TimeSpan timeout, out DataCacheLockHandle lockHandle, bool forceLock)
         {
-            throw new NotSupportedException("NCache does not support locking on non-existing objects");
+            return _cacheHandler.GetAndLock(key, timeout, out lockHandle, forceLock);
         }
         public object GetAndLock(string key, TimeSpan timeout, out DataCacheLockHandle lockHandle, string region)
         {
             return _cacheHandler.GetAndLock(key, timeout, out lockHandle, region);
         }
-        [Obsolete("NCache does not support locking on non-existing objects", true)]
+        
         public object GetAndLock(string key, TimeSpan timeout, out DataCacheLockHandle lockHandle, string region, bool forceLock)
         {
-            throw new NotSupportedException("NCache does not support locking on non-existing objects");
+            return _cacheHandler.GetAndLock(key, timeout, out lockHandle, region, forceLock);
         }
 
 
@@ -393,10 +393,9 @@ namespace Alachisoft.NCache.Data.Caching
             return _cacheHandler.AddCacheLevelBulkCallback(callBack);
         }
 
-        [Obsolete("NCache does not support failure notifications", true)]
-        internal DataCacheNotificationDescriptor AddFailureNotificationCallback(DataCacheFailureNotificationCallback callBack)
+        public DataCacheNotificationDescriptor AddFailureNotificationCallback(DataCacheFailureNotificationCallback callBack)
         {
-            throw new NotSupportedException();
+            return _cacheHandler.AddFailureNotificationCallback(callBack);
         }
         public void RemoveCallback(DataCacheNotificationDescriptor nd)
         {

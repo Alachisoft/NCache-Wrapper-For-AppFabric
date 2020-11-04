@@ -209,7 +209,7 @@ namespace Alachisoft.NCache.Data.Caching
                 {
                     if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.KEY_ALREADY_EXISTS)
                     {
-                        throw new DataCacheException("Key already exists.")
+                        throw new DataCacheException("Key already exists.", ex)
                         {
                             ErrorCode = DataCacheErrorCode.KeyAlreadyExists
                         };
@@ -265,7 +265,7 @@ namespace Alachisoft.NCache.Data.Caching
                 {
                     if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.KEY_ALREADY_EXISTS)
                     {
-                        throw new DataCacheException("Key already exists.")
+                        throw new DataCacheException("Key already exists.", ex)
                         {
                             ErrorCode = DataCacheErrorCode.KeyAlreadyExists
                         };
@@ -316,14 +316,14 @@ namespace Alachisoft.NCache.Data.Caching
                 {
                     if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.KEY_ALREADY_EXISTS)
                     {
-                        throw new DataCacheException("Key already exists.")
+                        throw new DataCacheException("Key already exists.", ex)
                         {
                             ErrorCode = DataCacheErrorCode.KeyAlreadyExists
                         };
                     }
                     else if (ex.ErrorCode == ErrorCodes.Common.DEPENDENCY_KEY_NOT_FOUND)
                     {
-                        throw new DataCacheException("Region not found.")
+                        throw new DataCacheException("Region not found.", ex)
                         {
                             ErrorCode = DataCacheErrorCode.RegionDoesNotExist
                         };
@@ -374,7 +374,7 @@ namespace Alachisoft.NCache.Data.Caching
                 {
                     if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.KEY_ALREADY_EXISTS)
                     {
-                        throw new DataCacheException("Key already exists.")
+                        throw new DataCacheException("Key already exists.", ex)
                         {
                             ErrorCode = DataCacheErrorCode.KeyAlreadyExists
                         };
@@ -435,14 +435,14 @@ namespace Alachisoft.NCache.Data.Caching
                 {
                     if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.KEY_ALREADY_EXISTS)
                     {
-                        throw new DataCacheException("Key already exists.")
+                        throw new DataCacheException("Key already exists.", ex)
                         {
                             ErrorCode = DataCacheErrorCode.KeyAlreadyExists
                         };
                     }
                     else if (ex.ErrorCode == ErrorCodes.Common.DEPENDENCY_KEY_NOT_FOUND)
                     {
-                        throw new DataCacheException("Region not found.")
+                        throw new DataCacheException("Region not found.", ex)
                         {
                             ErrorCode = DataCacheErrorCode.RegionDoesNotExist
                         };
@@ -503,7 +503,7 @@ namespace Alachisoft.NCache.Data.Caching
                 {
                     if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.KEY_ALREADY_EXISTS)
                     {
-                        throw new DataCacheException("Key already exists.")
+                        throw new DataCacheException("Key already exists.", ex)
                         {
                             ErrorCode = DataCacheErrorCode.KeyAlreadyExists
                         };
@@ -559,14 +559,14 @@ namespace Alachisoft.NCache.Data.Caching
                 {
                     if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.KEY_ALREADY_EXISTS)
                     {
-                        throw new DataCacheException("Key already exists.")
+                        throw new DataCacheException("Key already exists.", ex)
                         {
                             ErrorCode = DataCacheErrorCode.KeyAlreadyExists
                         };
                     }
                     else if (ex.ErrorCode == ErrorCodes.Common.DEPENDENCY_KEY_NOT_FOUND)
                     {
-                        throw new DataCacheException("Region not found.")
+                        throw new DataCacheException("Region not found.", ex)
                         {
                             ErrorCode = DataCacheErrorCode.RegionDoesNotExist
                         };
@@ -632,14 +632,14 @@ namespace Alachisoft.NCache.Data.Caching
                 {
                     if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.KEY_ALREADY_EXISTS)
                     {
-                        throw new DataCacheException("Key already exists.")
+                        throw new DataCacheException("Key already exists.", ex)
                         {
                             ErrorCode = DataCacheErrorCode.KeyAlreadyExists
                         };
                     }
                     else if (ex.ErrorCode == ErrorCodes.Common.DEPENDENCY_KEY_NOT_FOUND)
                     {
-                        throw new DataCacheException("Region not found.")
+                        throw new DataCacheException("Region not found.", ex)
                         {
                             ErrorCode = DataCacheErrorCode.RegionDoesNotExist
                         };
@@ -731,7 +731,7 @@ namespace Alachisoft.NCache.Data.Caching
                 {
                     if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_WITH_VERSION_DOESNT_EXIST)
                     {
-                        throw new DataCacheException("Invalid item version")
+                        throw new DataCacheException("Invalid item version", ex)
                         {
                             ErrorCode = DataCacheErrorCode.CacheItemVersionMismatch
                         };
@@ -932,7 +932,7 @@ namespace Alachisoft.NCache.Data.Caching
                 {
                     if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_WITH_VERSION_DOESNT_EXIST)
                     {
-                        throw new DataCacheException("Invalid item version")
+                        throw new DataCacheException("Invalid item version", ex)
                         {
                             ErrorCode = DataCacheErrorCode.CacheItemVersionMismatch
                         };
@@ -989,7 +989,7 @@ namespace Alachisoft.NCache.Data.Caching
                 {
                     if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_WITH_VERSION_DOESNT_EXIST)
                     {
-                        throw new DataCacheException("Invalid item version")
+                        throw new DataCacheException("Invalid item version", ex)
                         {
                             ErrorCode = DataCacheErrorCode.CacheItemVersionMismatch
                         };
@@ -1054,7 +1054,7 @@ namespace Alachisoft.NCache.Data.Caching
                 {
                     if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_WITH_VERSION_DOESNT_EXIST)
                     {
-                        throw new DataCacheException("Invalid item version")
+                        throw new DataCacheException("Invalid item version", ex)
                         {
                             ErrorCode = DataCacheErrorCode.CacheItemVersionMismatch
                         };
@@ -1289,7 +1289,7 @@ namespace Alachisoft.NCache.Data.Caching
                 {
                     if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_WITH_VERSION_DOESNT_EXIST)
                     {
-                        throw new DataCacheException("Invalid item version")
+                        throw new DataCacheException("Invalid item version", ex)
                         {
                             ErrorCode = DataCacheErrorCode.CacheItemVersionMismatch
                         };
@@ -1364,7 +1364,7 @@ namespace Alachisoft.NCache.Data.Caching
                 {
                     if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_WITH_VERSION_DOESNT_EXIST)
                     {
-                        throw new DataCacheException("Invalid item version")
+                        throw new DataCacheException("Invalid item version", ex)
                         {
                             ErrorCode = DataCacheErrorCode.CacheItemVersionMismatch
                         };
@@ -1426,7 +1426,7 @@ namespace Alachisoft.NCache.Data.Caching
                 {
                     if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_WITH_VERSION_DOESNT_EXIST)
                     {
-                        throw new DataCacheException("Invalid item version")
+                        throw new DataCacheException("Invalid item version", ex)
                         {
                             ErrorCode = DataCacheErrorCode.CacheItemVersionMismatch
                         };
@@ -1571,7 +1571,7 @@ namespace Alachisoft.NCache.Data.Caching
                 {
                     if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_WITH_VERSION_DOESNT_EXIST)
                     {
-                        throw new DataCacheException("Invalid item version")
+                        throw new DataCacheException("Invalid item version", ex)
                         {
                             ErrorCode = DataCacheErrorCode.CacheItemVersionMismatch
                         };
@@ -2350,10 +2350,13 @@ namespace Alachisoft.NCache.Data.Caching
             }
         }
 
-        [Obsolete("NCache does not support locking on non-existing objects", true)]
+
         internal object GetAndLock(string key, TimeSpan timeout, out DataCacheLockHandle lockHandle, bool forceLock)
         {
-            throw new NotSupportedException();
+            throw new DataCacheException("Operation Not Supported", new NotSupportedException("NCache does not support caching on non-existing keys"))
+            {
+                ErrorCode = DataCacheErrorCode.OperationNotSupported
+            };
         }
 
         internal object GetAndLock(string key, TimeSpan timeout, out DataCacheLockHandle lockHandle, string region)
@@ -2428,10 +2431,13 @@ namespace Alachisoft.NCache.Data.Caching
             }
         }
 
-        [Obsolete("NCache does not support locking on non-existing objects", true)]
+
         internal object GetAndLock(string key, TimeSpan timeout, out DataCacheLockHandle lockHandle, string region, bool forceLock)
         {
-            throw new NotSupportedException();
+            throw new DataCacheException("Operation Not Supported", new NotSupportedException("NCache does not support caching on non-existing keys"))
+            {
+                ErrorCode = DataCacheErrorCode.OperationNotSupported
+            };
         }
 
 
@@ -2463,7 +2469,6 @@ namespace Alachisoft.NCache.Data.Caching
                 if (oldCacheItem != null)
                 {
                     var cacheItem = DataFormatter.CreateCacheItem(value, null, null, _expirable, _defaultTimeout);
-                    cacheItem.Version = oldCacheItem.Version;
 
                     var cacheItemVersion = _cache.Insert(cacheKey, cacheItem, null, cacheLockHandle, true);
 
@@ -2498,13 +2503,6 @@ namespace Alachisoft.NCache.Data.Caching
                         throw new DataCacheException("Invalid lock handle", ex)
                         {
                             ErrorCode = DataCacheErrorCode.InvalidCacheLockHandle
-                        };
-                    }
-                    else if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_WITH_VERSION_DOESNT_EXIST)
-                    {
-                        throw new DataCacheException("Item updated outside lock", ex)
-                        {
-                            ErrorCode = DataCacheErrorCode.ObjectNotLocked
                         };
                     }
                     else
@@ -2557,8 +2555,6 @@ namespace Alachisoft.NCache.Data.Caching
                 {
                     var cacheItem = DataFormatter.CreateCacheItem(value, tags, null, _expirable, _defaultTimeout);
 
-                    cacheItem.Version = oldCacheItem.Version;
-
                     var cacheItemVersion = _cache.Insert(cacheKey, cacheItem, null, cacheLockHandle, true);
 
                     return new DataCacheItemVersion(cacheItemVersion);
@@ -2592,13 +2588,6 @@ namespace Alachisoft.NCache.Data.Caching
                         throw new DataCacheException("Invalid lock handle", ex)
                         {
                             ErrorCode = DataCacheErrorCode.InvalidCacheLockHandle
-                        };
-                    }
-                    else if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_WITH_VERSION_DOESNT_EXIST)
-                    {
-                        throw new DataCacheException("Item updated outside lock", ex)
-                        {
-                            ErrorCode = DataCacheErrorCode.ObjectNotLocked
                         };
                     }
                     else
@@ -2646,7 +2635,6 @@ namespace Alachisoft.NCache.Data.Caching
                 if (oldCacheItem != null)
                 {
                     var cacheItem = DataFormatter.CreateCacheItem(value, null, region, _expirable, _defaultTimeout);
-                    cacheItem.Version = oldCacheItem.Version;
                     var cacheItemVersion = _cache.Insert(cacheKey, cacheItem, null, cacheLockHandle, true);
 
                     return new DataCacheItemVersion(cacheItemVersion);
@@ -2690,13 +2678,6 @@ namespace Alachisoft.NCache.Data.Caching
                         throw new DataCacheException("Invalid lock handle", ex)
                         {
                             ErrorCode = DataCacheErrorCode.InvalidCacheLockHandle
-                        };
-                    }
-                    else if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_WITH_VERSION_DOESNT_EXIST)
-                    {
-                        throw new DataCacheException("Item updated outside lock", ex)
-                        {
-                            ErrorCode = DataCacheErrorCode.ObjectNotLocked
                         };
                     }
                     else if (ex.ErrorCode == ErrorCodes.Common.DEPENDENCY_KEY_NOT_FOUND)
@@ -2750,7 +2731,6 @@ namespace Alachisoft.NCache.Data.Caching
                 if (oldCacheItem != null)
                 {
                     var cacheItem = DataFormatter.CreateCacheItem(value, null, null, _expirable, timeout);
-                    cacheItem.Version = oldCacheItem.Version;
 
                     var cacheItemVersion = _cache.Insert(cacheKey, cacheItem, null, cacheLockHandle, true);
 
@@ -2785,13 +2765,6 @@ namespace Alachisoft.NCache.Data.Caching
                         throw new DataCacheException("Invalid lock handle", ex)
                         {
                             ErrorCode = DataCacheErrorCode.InvalidCacheLockHandle
-                        };
-                    }
-                    else if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_WITH_VERSION_DOESNT_EXIST)
-                    {
-                        throw new DataCacheException("Item updated outside lock", ex)
-                        {
-                            ErrorCode = DataCacheErrorCode.ObjectNotLocked
                         };
                     }
                     else
@@ -2848,7 +2821,6 @@ namespace Alachisoft.NCache.Data.Caching
                 if (oldCacheItem != null)
                 {
                     var cacheItem = DataFormatter.CreateCacheItem(value, tags, region, _expirable, _defaultTimeout);
-                    cacheItem.Version = oldCacheItem.Version;
 
                     var cacheItemVersion = _cache.Insert(cacheKey, cacheItem, null, cacheLockHandle, true);
 
@@ -2893,13 +2865,6 @@ namespace Alachisoft.NCache.Data.Caching
                         throw new DataCacheException("Invalid lock handle", ex)
                         {
                             ErrorCode = DataCacheErrorCode.InvalidCacheLockHandle
-                        };
-                    }
-                    else if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_WITH_VERSION_DOESNT_EXIST)
-                    {
-                        throw new DataCacheException("Item updated outside lock", ex)
-                        {
-                            ErrorCode = DataCacheErrorCode.ObjectNotLocked
                         };
                     }
                     else if (ex.ErrorCode == ErrorCodes.Common.DEPENDENCY_KEY_NOT_FOUND)
@@ -2963,7 +2928,6 @@ namespace Alachisoft.NCache.Data.Caching
                 if (oldCacheItem != null)
                 {
                     var cacheItem = DataFormatter.CreateCacheItem(value, tags, null, _expirable, timeout);
-                    cacheItem.Version = oldCacheItem.Version;
                     var cacheItemVersion = _cache.Insert(cacheKey, cacheItem, null, cacheLockHandle, true);
 
                     return new DataCacheItemVersion(cacheItemVersion);
@@ -2997,13 +2961,6 @@ namespace Alachisoft.NCache.Data.Caching
                         throw new DataCacheException("Invalid lock handle", ex)
                         {
                             ErrorCode = DataCacheErrorCode.InvalidCacheLockHandle
-                        };
-                    }
-                    else if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_WITH_VERSION_DOESNT_EXIST)
-                    {
-                        throw new DataCacheException("Item updated outside lock", ex)
-                        {
-                            ErrorCode = DataCacheErrorCode.ObjectNotLocked
                         };
                     }
                     else
@@ -3055,7 +3012,6 @@ namespace Alachisoft.NCache.Data.Caching
                 if (oldCacheItem != null)
                 {
                     var cacheItem = DataFormatter.CreateCacheItem(value, null, region, _expirable, timeout);
-                    cacheItem.Version = oldCacheItem.Version;
 
                     var cacheItemVersion = _cache.Insert(cacheKey, cacheItem, null, cacheLockHandle, true);
 
@@ -3100,13 +3056,6 @@ namespace Alachisoft.NCache.Data.Caching
                         throw new DataCacheException("Invalid lock handle", ex)
                         {
                             ErrorCode = DataCacheErrorCode.InvalidCacheLockHandle
-                        };
-                    }
-                    else if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_WITH_VERSION_DOESNT_EXIST)
-                    {
-                        throw new DataCacheException("Item updated outside lock", ex)
-                        {
-                            ErrorCode = DataCacheErrorCode.ObjectNotLocked
                         };
                     }
                     else if (ex.ErrorCode == ErrorCodes.Common.DEPENDENCY_KEY_NOT_FOUND)
@@ -3175,7 +3124,6 @@ namespace Alachisoft.NCache.Data.Caching
                 if (oldCacheItem != null)
                 {
                     var cacheItem = DataFormatter.CreateCacheItem(value, tags, region, _expirable, timeout);
-                    cacheItem.Version = oldCacheItem.Version;
 
                     var cacheItemVersion = _cache.Insert(cacheKey, cacheItem, null, cacheLockHandle, true);
 
@@ -3220,13 +3168,6 @@ namespace Alachisoft.NCache.Data.Caching
                         throw new DataCacheException("Invalid lock handle", ex)
                         {
                             ErrorCode = DataCacheErrorCode.InvalidCacheLockHandle
-                        };
-                    }
-                    else if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_WITH_VERSION_DOESNT_EXIST)
-                    {
-                        throw new DataCacheException("Item updated outside lock", ex)
-                        {
-                            ErrorCode = DataCacheErrorCode.ObjectNotLocked
                         };
                     }
                     else if (ex.ErrorCode == ErrorCodes.Common.DEPENDENCY_KEY_NOT_FOUND)
@@ -3305,13 +3246,6 @@ namespace Alachisoft.NCache.Data.Caching
                             ErrorCode = DataCacheErrorCode.InvalidCacheLockHandle
                         };
                     }
-                    else if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_WITH_VERSION_DOESNT_EXIST)
-                    {
-                        throw new DataCacheException("Item updated outside lock", ex)
-                        {
-                            ErrorCode = DataCacheErrorCode.ObjectNotLocked
-                        };
-                    }
                     else
                     {
                         throw CommonCacheExceptions(ex);
@@ -3383,13 +3317,6 @@ namespace Alachisoft.NCache.Data.Caching
                         throw new DataCacheException("Invalid lock handle", ex)
                         {
                             ErrorCode = DataCacheErrorCode.InvalidCacheLockHandle
-                        };
-                    }
-                    else if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_WITH_VERSION_DOESNT_EXIST)
-                    {
-                        throw new DataCacheException("Item updated outside lock", ex)
-                        {
-                            ErrorCode = DataCacheErrorCode.ObjectNotLocked
                         };
                     }
                     else
@@ -3470,13 +3397,6 @@ namespace Alachisoft.NCache.Data.Caching
                         throw new DataCacheException("Invalid lock handle", ex)
                         {
                             ErrorCode = DataCacheErrorCode.InvalidCacheLockHandle
-                        };
-                    }
-                    else if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_WITH_VERSION_DOESNT_EXIST)
-                    {
-                        throw new DataCacheException("Item updated outside lock", ex)
-                        {
-                            ErrorCode = DataCacheErrorCode.ObjectNotLocked
                         };
                     }
                     else if (ex.ErrorCode == ErrorCodes.Common.DEPENDENCY_KEY_NOT_FOUND)
@@ -3573,13 +3493,6 @@ namespace Alachisoft.NCache.Data.Caching
                             ErrorCode = DataCacheErrorCode.InvalidCacheLockHandle
                         };
                     }
-                    else if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_WITH_VERSION_DOESNT_EXIST)
-                    {
-                        throw new DataCacheException("Item updated outside lock", ex)
-                        {
-                            ErrorCode = DataCacheErrorCode.ObjectNotLocked
-                        };
-                    }
                     else if (ex.ErrorCode == ErrorCodes.Common.DEPENDENCY_KEY_NOT_FOUND)
                     {
                         throw new DataCacheException("Region does not exist.", ex)
@@ -3636,17 +3549,7 @@ namespace Alachisoft.NCache.Data.Caching
                 CacheException ex = e as CacheException;
                 if (ex != null)
                 {
-                    if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_WITH_VERSION_DOESNT_EXIST)
-                    {
-                        throw new DataCacheException("Invalid item version", ex)
-                        {
-                            ErrorCode = DataCacheErrorCode.CacheItemVersionMismatch
-                        };
-                    }
-                    else
-                    {
-                        throw CommonCacheExceptions(ex);
-                    }
+                    throw CommonCacheExceptions(ex);
                 }
                 else
                 {
@@ -3704,14 +3607,7 @@ namespace Alachisoft.NCache.Data.Caching
                 CacheException ex = e as CacheException;
                 if (ex != null)
                 {
-                    if (ex.ErrorCode == ErrorCodes.BasicCacheOperations.ITEM_WITH_VERSION_DOESNT_EXIST)
-                    {
-                        throw new DataCacheException("Invalid item version", ex)
-                        {
-                            ErrorCode = DataCacheErrorCode.CacheItemVersionMismatch
-                        };
-                    }
-                    else if (ex.ErrorCode == ErrorCodes.Common.DEPENDENCY_KEY_NOT_FOUND)
+                    if (ex.ErrorCode == ErrorCodes.Common.DEPENDENCY_KEY_NOT_FOUND)
                     {
                         throw new DataCacheException("Region does not exist.", ex)
                         {
@@ -3908,10 +3804,13 @@ namespace Alachisoft.NCache.Data.Caching
             }
         }
 
-        [Obsolete("NCache does not support failure notifications", true)]
+        
         internal DataCacheNotificationDescriptor AddFailureNotificationCallback(DataCacheFailureNotificationCallback callBack)
         {
-            throw new NotSupportedException();
+            throw new DataCacheException("Operation Not Supported", new NotSupportedException("NCache does not support failure notifications"))
+            {
+                ErrorCode = DataCacheErrorCode.OperationNotSupported
+            };
         }
 
         internal void RemoveCallback(DataCacheNotificationDescriptor nd)
