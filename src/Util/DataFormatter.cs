@@ -10,12 +10,14 @@ namespace Alachisoft.NCache.Data.Caching
 {
     internal static class DataFormatter
     {
+        private static string defaultRegion = "Default_Region";
+
         internal static string MarshalKey(string key, string region = null)
         {
             var cacheKey = new CacheKey
             {
                 Key = key.Trim(),
-                Region = string.IsNullOrWhiteSpace(region) ? null : region.Trim()
+                Region = string.IsNullOrWhiteSpace(region) ? defaultRegion : region.Trim()
             };
 
             return cacheKey.ToString();
@@ -47,13 +49,18 @@ namespace Alachisoft.NCache.Data.Caching
 
         internal static Tag MarshalTag(DataCacheTag dataCacheTag, string region)
         {
-            var cacheTag = new CacheTag
+            /// get data with tag from specific  region
+            if (!string.IsNullOrEmpty(region))
             {
-                Region = string.IsNullOrWhiteSpace(region) ? null : region.Trim(),
-                Tag = dataCacheTag.tag.Trim()
-            };
+                var cacheTag = new CacheTag
+                {
+                    Region = region.Trim(),
+                    Tag = dataCacheTag.tag.Trim()
+                };
+                return new Tag(cacheTag.ToString());
+            }
 
-            return new Tag(cacheTag.ToString());
+            return new Tag(dataCacheTag.tag.Trim());
         }
 
         internal static Tag MarshalRegionTag(string region)
@@ -67,38 +74,75 @@ namespace Alachisoft.NCache.Data.Caching
             return new Tag(cacheTag.ToString());
         }
 
-        internal static Tag[] MarshalTags(IEnumerable<DataCacheTag> dataCacheTags, string region, bool includeRegion = true)
+
+        internal static Tag[] MarshalTagsAndRegion(IEnumerable<DataCacheTag> dataCacheTags, string region)
         {
-            List<Tag> cacheTags = null;
+            List<Tag> cacheTags = new List<Tag>();
             if (dataCacheTags != null)
             {
-                if (!string.IsNullOrWhiteSpace(region) && includeRegion)
+                // if region is not null then add data with tag+region to specify data with tag in specific region
+                if (!string.IsNullOrWhiteSpace(region))
                 {
-                    cacheTags = new List<Tag>(dataCacheTags.Count() + 1);
-                    cacheTags.Add(MarshalRegionTag(region));
+                    cacheTags.AddRange(dataCacheTags.Select(x =>
+                    {
+                        var cacheTag = new CacheTag
+                        {
+                            Tag = x.tag.Trim(),
+                            Region = region.Trim()
+                        };
+
+                        return new Tag(cacheTag.ToString());
+                    }));
                 }
+
                 else
                 {
-                    cacheTags = new List<Tag>(dataCacheTags.Count());
+                    // add all tags independent from region 
+                    cacheTags.AddRange(dataCacheTags.Select(x =>
+                    {
+                        return new Tag(x.tag.Trim());
+                    }));
                 }
+
+            }
+
+            if (cacheTags == null)
+            {
+                return null;
+            }
+
+            return cacheTags.ToArray();
+        }
+
+
+        internal static Tag[] MarshalTags(IEnumerable<DataCacheTag> dataCacheTags, string region, bool includeRegion = true)
+        {
+            List<Tag> cacheTags = new List<Tag>();
+            if (dataCacheTags != null)
+            {
+                // if region is not null then add data with tag+region to specify data with tag in specific region
 
                 cacheTags.AddRange(dataCacheTags.Select(x =>
                 {
                     var cacheTag = new CacheTag
                     {
                         Tag = x.tag.Trim(),
-                        Region = string.IsNullOrWhiteSpace(region) ? null : region.Trim()
+                        Region = string.IsNullOrWhiteSpace(region) ? defaultRegion : region.Trim()
                     };
+
                     return new Tag(cacheTag.ToString());
                 }));
-            }
-            else
-            {
-                if (!string.IsNullOrWhiteSpace(region))
+
+
+                if (includeRegion)
                 {
-                    cacheTags = new List<Tag>(1);
-                    cacheTags.Add(MarshalRegionTag(region));
+                    // add all tags independent from region 
+                    cacheTags.AddRange(dataCacheTags.Select(x =>
+                    {
+                        return new Tag(x.tag.Trim());
+                    }));
                 }
+
             }
 
             if (cacheTags == null)
@@ -122,7 +166,6 @@ namespace Alachisoft.NCache.Data.Caching
 
             if (!string.IsNullOrWhiteSpace(region))
             {
-                cacheItem.Dependency = new KeyDependency(MarshalRegionKey(region));
                 cacheItem.Group = region.Trim();
             }
             else

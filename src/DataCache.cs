@@ -359,6 +359,10 @@ namespace Alachisoft.NCache.Data.Caching
         {
             _cacheHandler.ClearRegion(region);
         }
+        public void RemoveByTags(IEnumerable<DataCacheTag> tags, string region)
+        {
+            _cacheHandler.RemoveByTags(tags, region);
+        }
 
 
         public string GetSystemRegionName(string key)
